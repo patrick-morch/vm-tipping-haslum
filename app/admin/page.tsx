@@ -8,8 +8,10 @@ import {
   useBrukere,
   seedAlleKamper,
   slettBruker,
+  oppdaterKlubbRolle,
   nullstillAlleResultater,
 } from "@/lib/data";
+import type { KlubbRolle } from "@/lib/types";
 import { Bruker, Match } from "@/lib/types";
 import Skall from "@/components/Skall";
 import Beskytt from "@/components/Beskytt";
@@ -430,7 +432,7 @@ function MedlemmerSeksjon({
               key={b.uid}
               className="flex items-center justify-between gap-3 bg-elevated border border-border rounded-xl px-3 py-2"
             >
-              <div className="min-w-0">
+              <div className="min-w-0 flex-1">
                 <div className="text-sm font-medium truncate flex items-center gap-2">
                   {b.navn}
                   {b.rolle === "admin" && (
@@ -438,19 +440,14 @@ function MedlemmerSeksjon({
                       ADMIN
                     </span>
                   )}
-                  {b.klubbRolle && (
-                    <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-elevated border border-border text-muted font-semibold uppercase">
-                      {b.klubbRolle === "trener"
-                        ? "🧥 Trener"
-                        : b.klubbRolle === "spiller"
-                          ? "⚽ Spiller"
-                          : "👥 Annet"}
-                    </span>
-                  )}
                 </div>
-                <div className="text-[11px] text-muted truncate">
+                <div className="text-[11px] text-muted truncate mb-1.5">
                   {b.epost}
                 </div>
+                <KlubbRolleVelger
+                  uid={b.uid}
+                  nåværende={b.klubbRolle}
+                />
               </div>
               <button
                 onClick={() => setSkalSlette(b)}
@@ -476,6 +473,56 @@ function MedlemmerSeksjon({
         />
       )}
     </section>
+  );
+}
+
+function KlubbRolleVelger({
+  uid,
+  nåværende,
+}: {
+  uid: string;
+  nåværende?: KlubbRolle;
+}) {
+  const [lagrer, setLagrer] = useState<KlubbRolle | null>(null);
+
+  async function velg(r: KlubbRolle) {
+    if (r === nåværende) return;
+    setLagrer(r);
+    try {
+      await oppdaterKlubbRolle(uid, r);
+    } finally {
+      setLagrer(null);
+    }
+  }
+
+  const valg: { v: KlubbRolle; ikon: string; label: string }[] = [
+    { v: "trener", ikon: "🧥", label: "Trener" },
+    { v: "spiller", ikon: "⚽", label: "Spiller" },
+    { v: "annet", ikon: "👥", label: "Annet" },
+  ];
+
+  return (
+    <div className="flex gap-1 flex-wrap">
+      {valg.map((c) => {
+        const valgt = nåværende === c.v;
+        const lasterDenne = lagrer === c.v;
+        return (
+          <button
+            key={c.v}
+            onClick={() => velg(c.v)}
+            disabled={Boolean(lagrer)}
+            className={`h-6 px-2 rounded-md text-[10px] font-semibold uppercase tracking-wider transition flex items-center gap-1 ${
+              valgt
+                ? "bg-primary/15 text-primary border border-primary/30"
+                : "bg-elevated border border-border text-muted hover:text-text hover:border-primary/30"
+            } disabled:opacity-50`}
+          >
+            <span className="text-xs">{c.ikon}</span>
+            {lasterDenne ? "…" : c.label}
+          </button>
+        );
+      })}
+    </div>
   );
 }
 

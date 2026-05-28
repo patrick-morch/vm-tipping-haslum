@@ -277,6 +277,25 @@ export async function leggTilKamp(k: Omit<Match, "id">) {
 }
 
 /**
+ * Setter eller endrer klubbrolle på en bruker.
+ * Krever admin eller at brukeren oppdaterer egen rad.
+ */
+export async function oppdaterKlubbRolle(
+  uid: string,
+  klubbRolle: "trener" | "spiller" | "annet",
+): Promise<void> {
+  if (bruker()) {
+    await updateDoc(doc(fbDb(), "brukere", uid), { klubbRolle });
+    return;
+  }
+  const map = { ...localBrukere.get() };
+  const b = map[uid];
+  if (!b) return;
+  map[uid] = { ...b, klubbRolle };
+  localBrukere.set(map);
+}
+
+/**
  * Sletter en bruker komplett — brukerdoc, alle kamptipps og spesialtips.
  * Krever admin-rettigheter i Firestore.
  */
