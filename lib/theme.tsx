@@ -20,21 +20,24 @@ const ThemeCtx = createContext<Ctx | null>(null);
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const [tema, setTema] = useState<Tema>("mørk");
+  const [klar, setKlar] = useState(false);
 
   useEffect(() => {
     const lagret = localStorage.getItem("vmt.tema") as Tema | null;
     if (lagret === "lys" || lagret === "mørk") {
       setTema(lagret);
-      return;
+    } else {
+      const mørk = window.matchMedia?.("(prefers-color-scheme: dark)").matches;
+      setTema(mørk ? "mørk" : "lys");
     }
-    const mørk = window.matchMedia?.("(prefers-color-scheme: dark)").matches;
-    setTema(mørk ? "mørk" : "lys");
+    setKlar(true);
   }, []);
 
   useEffect(() => {
+    if (!klar) return;
     document.documentElement.dataset.theme = tema === "mørk" ? "dark" : "light";
     localStorage.setItem("vmt.tema", tema);
-  }, [tema]);
+  }, [tema, klar]);
 
   return (
     <ThemeCtx.Provider
