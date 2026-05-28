@@ -76,7 +76,13 @@ export default function Skall({ children }: { children: ReactNode }) {
         </div>
       </header>
 
-      <main className="flex-1 max-w-[480px] w-full mx-auto px-4 py-4 pb-24">
+      <main
+        className={`flex-1 w-full mx-auto px-4 py-4 pb-24 ${
+          path === "/sluttspill" || path === "/sluttspill/"
+            ? "max-w-[480px] lg:max-w-6xl"
+            : "max-w-[480px]"
+        }`}
+      >
         {children}
       </main>
 

@@ -6,6 +6,7 @@ import {
   collection,
   deleteDoc,
   doc,
+  getDocs,
   onSnapshot,
   orderBy,
   query,
@@ -16,8 +17,10 @@ import {
 import { fbDb, isFirebaseConfigured } from "./firebase";
 import {
   localBrukere,
+  localCurrent,
   localFasit,
   localKamper,
+  localPassord,
   localSpesialTips,
   localTips,
 } from "./local-store";
@@ -223,6 +226,46 @@ export async function leggTilKamp(k: Omit<Match, "id">) {
   const liste = localKamper.get();
   const id = `lokal-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
   localKamper.set([...liste, { ...k, id }]);
+}
+
+/**
+ * Sletter en bruker komplett — brukerdoc, alle kamptipps og spesialtips.
+ * Krever admin-rettigheter i Firestore.
+ */
+export async function slettBruker(uid: string): Promise<void> {
+  if (bruker()) {
+    const db = fbDb();
+    // Slett alle kamptipps
+    const tipsSnap = await getDocs(
+      query(collection(db, "tips"), where("uid", "==", uid)),
+    );
+    await Promise.all(tipsSnap.docs.map((d) => deleteDoc(d.ref)));
+    // Slett spesialtip
+    await deleteDoc(doc(db, "spesialtips", uid)).catch(() => undefined);
+    // Slett brukerdoc
+    await deleteDoc(doc(db, "brukere", uid));
+    return;
+  }
+  // Demo-modus
+  const brukere = { ...localBrukere.get() };
+  delete brukere[uid];
+  localBrukere.set(brukere);
+
+  const passord = { ...localPassord.get() };
+  delete passord[uid];
+  localPassord.set(passord);
+
+  const tipsAlle = { ...localTips.get() };
+  for (const key of Object.keys(tipsAlle)) {
+    if (tipsAlle[key].uid === uid) delete tipsAlle[key];
+  }
+  localTips.set(tipsAlle);
+
+  const spesial = { ...localSpesialTips.get() };
+  delete spesial[uid];
+  localSpesialTips.set(spesial);
+
+  if (localCurrent.get() === uid) localCurrent.set(null);
 }
 
 export async function settResultat(
