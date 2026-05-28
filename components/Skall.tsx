@@ -29,6 +29,18 @@ export default function Skall({ children }: { children: ReactNode }) {
 
   return (
     <div className="min-h-screen flex flex-col">
+      {/* Global subtil Haslum-watermark som bakteppe */}
+      <div
+        aria-hidden
+        className="fixed inset-0 pointer-events-none flex items-center justify-center -z-10"
+      >
+        <img
+          src="/haslum-logo.jpeg"
+          alt=""
+          className="w-[520px] h-[520px] max-w-[90vw] max-h-[90vw] object-contain opacity-[0.035]"
+        />
+      </div>
+
       {demoModus && (
         <div className="bg-warning/10 text-warning text-center text-xs py-1.5 border-b border-warning/20">
           Demo-modus — data lagres bare i nettleseren
