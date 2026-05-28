@@ -77,11 +77,18 @@ export default function LoggInn() {
   return (
     <div className="min-h-screen flex items-center justify-center px-4">
       <div className="w-full max-w-sm">
-        <div className="flex items-center gap-2 justify-center mb-8">
-          <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center text-primaryFg font-bold">
-            VM
+        <div className="flex flex-col items-center gap-3 mb-8">
+          <img
+            src="/haslum-logo.jpg"
+            alt="Haslum IL"
+            className="w-20 h-20 rounded-2xl object-cover shadow-card"
+          />
+          <div className="text-center">
+            <div className="text-xl font-bold leading-tight">VM-tipping</div>
+            <div className="text-[11px] text-muted uppercase tracking-[0.15em] font-semibold">
+              Haslum IL
+            </div>
           </div>
-          <span className="text-xl font-semibold">VM-tipping</span>
         </div>
 
         {demoModus && (
