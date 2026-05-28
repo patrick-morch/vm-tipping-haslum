@@ -30,13 +30,23 @@ function Kamper() {
   const { user, bruker } = useAuth();
   const kamper = useKamper();
   const tips = useMineTips(user?.uid);
+  const [nå, setNå] = useState(Date.now());
 
-  const nå = Date.now();
+  useEffect(() => {
+    const t = setInterval(() => setNå(Date.now()), 30_000);
+    return () => clearInterval(t);
+  }, []);
+
   const åpne = kamper
     .filter((k) => k.starttid - LÅS_FØR_KAMP_MS > nå)
     .sort((a, b) => a.starttid - b.starttid);
   const neste = åpne.slice(0, ANTALL);
   const utenTip = neste.filter((k) => !tips[k.id]).length;
+
+  const sisteFerdige = kamper
+    .filter((k) => k.resultat && k.starttid < nå)
+    .sort((a, b) => b.starttid - a.starttid)
+    .slice(0, 3);
 
   async function lagre(id: string, h: number, b: number) {
     if (!user || !bruker) return;
@@ -55,30 +65,35 @@ function Kamper() {
     await slettTip(id, user.uid);
   }
 
-  return (
-    <div className="space-y-4">
-      <div>
-        <h1 className="text-2xl font-semibold">Neste kamper</h1>
-        <p className="text-muted text-sm">
-          {utenTip > 0
-            ? `${utenTip} av de neste ${ANTALL} er ikke tippet ennå.`
-            : neste.length === 0
-              ? "Ingen åpne kamper akkurat nå."
-              : "Alle de nærmeste kampene er tippet."}
-        </p>
-      </div>
+  // Grupperer kamper etter dag
+  const grupperte = grupperEtterDag(neste, nå);
 
-      <div className="space-y-3">
-        {neste.map((kamp) => (
-          <KampKort
-            key={kamp.id}
-            kamp={kamp}
-            tip={tips[kamp.id]}
-            onLagre={(h, b) => lagre(kamp.id, h, b)}
-            onSlett={() => slett(kamp.id)}
-          />
-        ))}
-      </div>
+  return (
+    <div className="space-y-5">
+      {neste[0] && <Countdown kamp={neste[0]} nå={nå} utenTip={utenTip} />}
+
+      {neste.length === 0 && (
+        <div className="bg-surface border border-border rounded-2xl p-8 text-center text-muted text-sm">
+          Ingen åpne kamper akkurat nå.
+        </div>
+      )}
+
+      {grupperte.map(({ dato, kamper: dagsKamper }) => (
+        <div key={dato} className="space-y-2">
+          <DatoHeader dato={dato} nå={nå} />
+          <div className="space-y-2">
+            {dagsKamper.map((kamp) => (
+              <KampKort
+                key={kamp.id}
+                kamp={kamp}
+                tip={tips[kamp.id]}
+                onLagre={(h, b) => lagre(kamp.id, h, b)}
+                onSlett={() => slett(kamp.id)}
+              />
+            ))}
+          </div>
+        </div>
+      ))}
 
       {åpne.length > ANTALL && (
         <Link
@@ -88,6 +103,137 @@ function Kamper() {
           Se alle {åpne.length} åpne kamper →
         </Link>
       )}
+
+      {sisteFerdige.length > 0 && (
+        <div className="space-y-2 pt-2">
+          <div className="text-[10px] uppercase tracking-[0.15em] font-bold text-muted px-1">
+            Siste resultater
+          </div>
+          <div className="space-y-2">
+            {sisteFerdige.map((kamp) => (
+              <ResultatKort key={kamp.id} kamp={kamp} tip={tips[kamp.id]} />
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function grupperEtterDag(
+  kamper: Match[],
+  nå: number,
+): { dato: string; kamper: Match[] }[] {
+  const map = new Map<string, Match[]>();
+  for (const k of kamper) {
+    const dato = new Date(k.starttid).toLocaleDateString("nb-NO", {
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    });
+    const liste = map.get(dato) || [];
+    liste.push(k);
+    map.set(dato, liste);
+  }
+  return Array.from(map.entries()).map(([dato, kamper]) => ({ dato, kamper }));
+}
+
+function DatoHeader({ dato, nå }: { dato: string; nå: number }) {
+  const [d, m, y] = dato.split(".").map((s) => s.trim());
+  const dt = new Date(`${y}-${m}-${d}T12:00:00`);
+  const idag = new Date(nå);
+  const imorgen = new Date(nå + 24 * 3600_000);
+
+  const sammeDag = (a: Date, b: Date) =>
+    a.getFullYear() === b.getFullYear() &&
+    a.getMonth() === b.getMonth() &&
+    a.getDate() === b.getDate();
+
+  let tag = "";
+  let temaKlasse = "text-muted";
+  if (sammeDag(dt, idag)) {
+    tag = "I DAG";
+    temaKlasse = "text-primary";
+  } else if (sammeDag(dt, imorgen)) {
+    tag = "I MORGEN";
+    temaKlasse = "text-accent";
+  } else {
+    tag = dt.toLocaleDateString("nb-NO", { weekday: "long" }).toUpperCase();
+  }
+
+  const beskrivelse = dt.toLocaleDateString("nb-NO", {
+    day: "numeric",
+    month: "long",
+  });
+
+  return (
+    <div className="flex items-baseline gap-2 px-1">
+      <span
+        className={`text-[11px] font-bold uppercase tracking-[0.12em] ${temaKlasse}`}
+      >
+        {tag}
+      </span>
+      <span className="text-[10px] text-muted/70">{beskrivelse}</span>
+    </div>
+  );
+}
+
+function Countdown({
+  kamp,
+  nå,
+  utenTip,
+}: {
+  kamp: Match;
+  nå: number;
+  utenTip: number;
+}) {
+  const ms = kamp.starttid - nå;
+  const totalMin = Math.floor(ms / 60_000);
+  const dager = Math.floor(totalMin / (60 * 24));
+  const timer = Math.floor((totalMin % (60 * 24)) / 60);
+  const min = totalMin % 60;
+
+  let tekst = "";
+  if (dager > 0) tekst = `${dager}d ${timer}t`;
+  else if (timer > 0) tekst = `${timer}t ${min}m`;
+  else tekst = `${min} min`;
+
+  const erNorge = erNorgeKamp(kamp);
+
+  return (
+    <div
+      className={`relative overflow-hidden rounded-3xl border p-4 ${
+        erNorge
+          ? "border-norge/40 bg-gradient-to-br from-norge/15 via-norge/5 to-transparent"
+          : "border-primary/30 bg-gradient-to-br from-primary/15 via-primary/5 to-transparent"
+      }`}
+    >
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0 flex-1">
+          <div
+            className={`text-[10px] uppercase tracking-[0.15em] font-bold ${
+              erNorge ? "text-norge" : "text-primary"
+            }`}
+          >
+            Neste kamp om
+          </div>
+          <div className="text-2xl font-bold leading-tight mt-0.5">
+            {tekst}
+          </div>
+          <div className="text-[11px] text-muted mt-1.5 truncate">
+            {flagg(kamp.hjemmelag)} {kortLagNavn(kamp.hjemmelag)} – {kortLagNavn(kamp.bortelag)}{" "}
+            {flagg(kamp.bortelag)}
+          </div>
+        </div>
+        {utenTip > 0 && (
+          <div className="text-right">
+            <div className="text-2xl font-bold leading-none">{utenTip}</div>
+            <div className="text-[9px] text-muted uppercase tracking-wider mt-1">
+              ikke tippet
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
@@ -136,17 +282,11 @@ function KampKort({
   }, [hjem, bort, gyldig, tom, uendret, Boolean(tip)]);
 
   const dato = new Date(kamp.starttid);
-  const datoStr = dato.toLocaleDateString("nb-NO", {
-    weekday: "short",
-    day: "2-digit",
-    month: "short",
-  });
   const klokke = dato.toLocaleTimeString("nb-NO", {
     hour: "2-digit",
     minute: "2-digit",
   });
 
-  // Fasit-sammenligning (vanligvis ikke aktuelt på Neste kamper siden de er fremtidige)
   let status: { tekst: string; farge: string } | null = null;
   if (kamp.resultat && tip) {
     const p = beregnPoeng(tip, kamp.resultat, kamp.bonusFaktor || 1);
@@ -158,53 +298,97 @@ function KampKort({
 
   return (
     <div
-      className={`bg-surface border rounded-2xl p-4 ${
+      className={`relative bg-surface border rounded-2xl p-3 transition ${
         erNorge ? "border-norge/40" : "border-border"
       }`}
     >
-      <div className="flex items-center justify-between text-xs text-muted mb-3">
+      <div className="flex items-center justify-between text-[10px] mb-2.5">
         <div className="flex items-center gap-2">
-          <span>{kamp.runde}</span>
-          {kamp.bonusFaktor > 1 && (
-            <span className="px-2 py-0.5 rounded-full bg-norge/15 text-norge font-semibold text-[10px]">
-              ×{kamp.bonusFaktor} poeng
-            </span>
-          )}
+          <span className="font-bold text-muted">{klokke}</span>
+          <span className="text-muted/60">·</span>
+          <span className="text-muted">{kamp.runde}</span>
         </div>
-        <span>
-          {datoStr} · {klokke}
-        </span>
+        {kamp.bonusFaktor > 1 && (
+          <span className="px-2 py-0.5 rounded-full bg-norge/15 text-norge font-bold tracking-wider">
+            ×{kamp.bonusFaktor} POENG
+          </span>
+        )}
       </div>
 
-      <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3">
-        <div className="text-right font-semibold min-w-0 truncate">
-          <span>{kortLagNavn(kamp.hjemmelag)}</span>{" "}
-          <span className="text-lg">{flagg(kamp.hjemmelag)}</span>
+      <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
+        <div className="flex items-center justify-end gap-2 min-w-0">
+          <span className="font-semibold text-sm truncate">
+            {kortLagNavn(kamp.hjemmelag)}
+          </span>
+          <span className="text-2xl flex-shrink-0">{flagg(kamp.hjemmelag)}</span>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5">
           <Sc verdi={hjem} onChange={setHjem} />
-          <span className="text-muted">–</span>
+          <span className="text-muted/60 text-xs font-bold">:</span>
           <Sc verdi={bort} onChange={setBort} />
         </div>
-        <div className="text-left font-semibold min-w-0 truncate">
-          <span className="text-lg">{flagg(kamp.bortelag)}</span>{" "}
-          <span>{kortLagNavn(kamp.bortelag)}</span>
+        <div className="flex items-center gap-2 min-w-0">
+          <span className="text-2xl flex-shrink-0">{flagg(kamp.bortelag)}</span>
+          <span className="font-semibold text-sm truncate">
+            {kortLagNavn(kamp.bortelag)}
+          </span>
         </div>
       </div>
 
       {kamp.resultat && (
-        <div className="mt-3 pt-3 border-t border-border space-y-1">
-          <div className="flex items-center justify-between text-xs">
-            <span className="text-muted">Fasit:</span>
+        <div className="mt-2 pt-2 border-t border-border flex items-center justify-between">
+          <div className="text-[11px]">
+            <span className="text-muted">Fasit </span>
             <span className="font-bold tabular-nums">
-              {kamp.resultat.hjemme} – {kamp.resultat.borte}
+              {kamp.resultat.hjemme}–{kamp.resultat.borte}
             </span>
           </div>
           {status && (
-            <div className={`text-xs font-semibold ${status.farge}`}>
+            <span className={`text-[11px] font-bold ${status.farge}`}>
               {status.tekst}
-            </div>
+            </span>
           )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ResultatKort({ kamp, tip }: { kamp: Match; tip?: Prediction }) {
+  if (!kamp.resultat) return null;
+  let status: { tekst: string; farge: string } | null = null;
+  if (tip) {
+    const p = beregnPoeng(tip, kamp.resultat, kamp.bonusFaktor || 1);
+    if (p >= 3) status = { tekst: `+${p}p eksakt`, farge: "text-success" };
+    else if (p >= 1)
+      status = { tekst: `+${p}p utfall`, farge: "text-accent" };
+    else status = { tekst: "0p", farge: "text-muted" };
+  }
+  const erNorge = erNorgeKamp(kamp);
+  return (
+    <div
+      className={`bg-surface/60 border rounded-xl p-2.5 ${
+        erNorge ? "border-norge/30" : "border-border/60"
+      }`}
+    >
+      <div className="flex items-center gap-2">
+        <span className="text-base flex-shrink-0">{flagg(kamp.hjemmelag)}</span>
+        <span className="text-xs font-medium truncate flex-1 text-right">
+          {kortLagNavn(kamp.hjemmelag)}
+        </span>
+        <span className="font-bold text-sm tabular-nums px-2 py-0.5 rounded bg-elevated border border-border">
+          {kamp.resultat.hjemme}–{kamp.resultat.borte}
+        </span>
+        <span className="text-xs font-medium truncate flex-1">
+          {kortLagNavn(kamp.bortelag)}
+        </span>
+        <span className="text-base flex-shrink-0">{flagg(kamp.bortelag)}</span>
+      </div>
+      {status && (
+        <div className="text-center mt-1">
+          <span className={`text-[10px] font-bold ${status.farge}`}>
+            {status.tekst}
+          </span>
         </div>
       )}
     </div>
@@ -228,7 +412,7 @@ function Sc({
       onChange={(e) =>
         onChange(e.target.value.replace(/[^0-9]/g, "").slice(0, 2))
       }
-      className="w-14 h-12 text-center text-xl font-bold rounded-xl bg-elevated border border-border focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+      className="w-12 h-12 text-center text-xl font-bold rounded-xl bg-elevated border border-border focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 transition"
     />
   );
 }
