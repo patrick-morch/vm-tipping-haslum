@@ -17,11 +17,14 @@ export type Prediction = {
   lagretTid: number;
 };
 
+export type KlubbRolle = "trener" | "spiller" | "annet";
+
 export type Bruker = {
   uid: string;
   epost: string;
   navn: string;
   avdeling?: string;
+  klubbRolle?: KlubbRolle; // valgfri for eldre brukere uten denne
   rolle: "medlem" | "admin";
   poeng: number;
   opprettet: number;

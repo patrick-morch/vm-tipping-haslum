@@ -33,7 +33,8 @@ service cloud.firestore {
       allow read: if erInnlogget();
       allow create: if erEier(uid)
         && request.resource.data.rolle == 'medlem'
-        && request.resource.data.poeng == 0;
+        && request.resource.data.poeng == 0
+        && request.resource.data.klubbRolle in ['trener', 'spiller', 'annet'];
       allow update: if (erEier(uid)
         && request.resource.data.rolle == resource.data.rolle
         && request.resource.data.poeng == resource.data.poeng)

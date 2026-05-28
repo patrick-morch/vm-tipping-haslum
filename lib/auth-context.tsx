@@ -24,7 +24,7 @@ import {
   localPassord,
   seedDemo,
 } from "./local-store";
-import { Bruker } from "./types";
+import { Bruker, KlubbRolle } from "./types";
 
 type AuthCtx = {
   user: { uid: string; email: string } | null;
@@ -36,6 +36,7 @@ type AuthCtx = {
     epost: string,
     passord: string,
     navn: string,
+    klubbRolle: KlubbRolle,
     avdeling?: string,
   ) => Promise<void>;
   loggUt: () => Promise<void>;
@@ -124,6 +125,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     epost: string,
     passord: string,
     navn: string,
+    klubbRolle: KlubbRolle,
     avdeling?: string,
   ) {
     if (fbActive) {
@@ -138,6 +140,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         epost,
         navn,
         avdeling: avdeling || "",
+        klubbRolle,
         rolle: "medlem",
         poeng: 0,
         opprettet: Date.now(),
@@ -161,6 +164,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       epost,
       navn,
       avdeling: avdeling || "",
+      klubbRolle,
       rolle: Object.keys(localBrukere.get()).length === 0 ? "admin" : "medlem",
       poeng: 0,
       opprettet: Date.now(),

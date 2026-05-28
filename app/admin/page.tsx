@@ -438,6 +438,15 @@ function MedlemmerSeksjon({
                       ADMIN
                     </span>
                   )}
+                  {b.klubbRolle && (
+                    <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-elevated border border-border text-muted font-semibold uppercase">
+                      {b.klubbRolle === "trener"
+                        ? "🧥 Trener"
+                        : b.klubbRolle === "spiller"
+                          ? "⚽ Spiller"
+                          : "👥 Annet"}
+                    </span>
+                  )}
                 </div>
                 <div className="text-[11px] text-muted truncate">
                   {b.epost}

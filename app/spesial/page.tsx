@@ -248,7 +248,7 @@ function SpillerKort({
 
   return (
     <div
-      className={`relative overflow-hidden rounded-3xl border bg-gradient-to-br p-5 ${fargeKlasse}`}
+      className={`relative rounded-3xl border bg-gradient-to-br p-5 ${fargeKlasse}`}
     >
       <div className="relative space-y-4">
         <div className="flex items-start justify-between">
