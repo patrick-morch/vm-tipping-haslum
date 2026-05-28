@@ -13,38 +13,57 @@ service cloud.firestore {
         && exists(/databases/$(database)/documents/brukere/$(request.auth.uid))
         && get(/databases/$(database)/documents/brukere/$(request.auth.uid)).data.rolle == 'admin';
     }
+    function kampIkkeStartet(matchId) {
+      return exists(/databases/$(database)/documents/kamper/$(matchId))
+        && get(/databases/$(database)/documents/kamper/$(matchId)).data.starttid > request.time.toMillis();
+    }
 
-    // Brukere: alle innloggede kan lese (ledertavle), bare eier kan skrive eget felt,
-    // bare admin kan endre rolle eller poeng.
+    // Brukere: alle innloggede kan lese (ledertavle).
+    // Eier kan opprette egen profil med medlems-rolle og 0 poeng.
+    // Eier kan oppdatere navn/avdeling, men ikke rolle eller poeng.
+    // Admin kan alt.
     match /brukere/{uid} {
       allow read: if erInnlogget();
       allow create: if erEier(uid)
         && request.resource.data.rolle == 'medlem'
         && request.resource.data.poeng == 0;
-      allow update: if erEier(uid)
+      allow update: if (erEier(uid)
         && request.resource.data.rolle == resource.data.rolle
-        && request.resource.data.poeng == resource.data.poeng
+        && request.resource.data.poeng == resource.data.poeng)
         || erAdmin();
       allow delete: if erAdmin();
     }
 
-    // Kamper: alle kan lese, bare admin kan skrive
+    // Kamper: alle innloggede kan lese, bare admin skriver.
     match /kamper/{matchId} {
       allow read: if erInnlogget();
       allow write: if erAdmin();
     }
 
-    // Tips: alle innloggede kan lese (etter kampstart bør håndteres i UI),
-    // bare eier kan skrive eget tip, og kun før kampstart.
+    // Tips: alle innloggede kan lese, eier kan opprette/oppdatere/slette
+    // egne tipps frem til kampstart.
     match /tips/{tipId} {
       allow read: if erInnlogget();
       allow create: if erInnlogget()
         && request.resource.data.uid == request.auth.uid
-        && get(/databases/$(database)/documents/kamper/$(request.resource.data.matchId)).data.starttid > request.time.toMillis();
-      allow update: if erInnlogget()
-        && resource.data.uid == request.auth.uid
-        && get(/databases/$(database)/documents/kamper/$(resource.data.matchId)).data.starttid > request.time.toMillis();
-      allow delete: if false;
+        && kampIkkeStartet(request.resource.data.matchId);
+      allow update: if resource.data.uid == request.auth.uid
+        && kampIkkeStartet(resource.data.matchId);
+      allow delete: if resource.data.uid == request.auth.uid
+        && kampIkkeStartet(resource.data.matchId);
+    }
+
+    // Spesialtips: alle kan lese (for ledertavle), eier skriver egen.
+    match /spesialtips/{uid} {
+      allow read: if erInnlogget();
+      allow create, update: if erEier(uid);
+      allow delete: if erEier(uid) || erAdmin();
+    }
+
+    // Fasit: alle kan lese, bare admin skriver.
+    match /fasit/{dok} {
+      allow read: if erInnlogget();
+      allow write: if erAdmin();
     }
   }
 }

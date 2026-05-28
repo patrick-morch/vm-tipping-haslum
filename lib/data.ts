@@ -28,6 +28,7 @@ import {
   Prediction,
   SpesialTip,
 } from "./types";
+import { alleGruppekamper } from "./vm-data";
 
 function bruker() {
   return isFirebaseConfigured();
@@ -192,6 +193,26 @@ export async function lagreFasit(f: Fasit) {
     return;
   }
   localFasit.set(f);
+}
+
+/**
+ * Skriver alle 72 VM-kamper med faste IDer (A1..L6) til Firestore eller
+ * localStorage. Idempotent — kan kjøres flere ganger uten å lage duplikater,
+ * men overskriver hvis admin har endret en kamp manuelt.
+ */
+export async function seedAlleKamper(): Promise<number> {
+  const kamper = alleGruppekamper();
+  if (bruker()) {
+    await Promise.all(
+      kamper.map((k) => {
+        const { id, ...data } = k;
+        return setDoc(doc(fbDb(), "kamper", id), data);
+      }),
+    );
+  } else {
+    localKamper.set(kamper);
+  }
+  return kamper.length;
 }
 
 export async function leggTilKamp(k: Omit<Match, "id">) {

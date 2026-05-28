@@ -3,7 +3,12 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
-import { useKamper, leggTilKamp, settResultat } from "@/lib/data";
+import {
+  useKamper,
+  leggTilKamp,
+  settResultat,
+  seedAlleKamper,
+} from "@/lib/data";
 import { Match } from "@/lib/types";
 import Skall from "@/components/Skall";
 import Beskytt from "@/components/Beskytt";
@@ -57,8 +62,10 @@ function Admin() {
     <div className="space-y-6">
       <h1 className="text-2xl font-semibold">Admin</h1>
 
+      <SeedSeksjon kamper={kamper} />
+
       <section className="bg-surface border border-border rounded-2xl p-4 space-y-3">
-        <h2 className="font-semibold">Legg til kamp</h2>
+        <h2 className="font-semibold">Legg til kamp manuelt</h2>
         <form onSubmit={nyKamp} className="space-y-2">
           <div className="grid grid-cols-2 gap-2">
             <input
@@ -118,6 +125,56 @@ function Admin() {
         ))}
       </section>
     </div>
+  );
+}
+
+function SeedSeksjon({ kamper }: { kamper: Match[] }) {
+  const [laster, setLaster] = useState(false);
+  const [klart, setKlart] = useState(false);
+  const tilstede = kamper.length;
+  const trenger = 72;
+  const ferdig = tilstede >= trenger;
+
+  async function seed() {
+    if (!confirm("Skriv alle 72 VM-kamper til databasen?")) return;
+    setLaster(true);
+    try {
+      await seedAlleKamper();
+      setKlart(true);
+      setTimeout(() => setKlart(false), 2000);
+    } finally {
+      setLaster(false);
+    }
+  }
+
+  return (
+    <section
+      className={`border rounded-2xl p-4 ${
+        ferdig
+          ? "bg-success/5 border-success/30"
+          : "bg-warning/5 border-warning/30"
+      }`}
+    >
+      <div className="flex items-center justify-between gap-3">
+        <div className="min-w-0">
+          <h2 className="font-semibold flex items-center gap-2">
+            {ferdig ? "✓" : "⚠"} VM-kamper i databasen
+          </h2>
+          <p className="text-xs text-muted mt-0.5">
+            {tilstede}/{trenger} kamper. {ferdig
+              ? "Alt er på plass. Du kan kjøre seed igjen for å overskrive."
+              : "Trykk på knappen for å legge til alle 72 gruppekamper."}
+          </p>
+        </div>
+        <button
+          onClick={seed}
+          disabled={laster}
+          className="h-10 px-4 rounded-xl bg-primary text-primaryFg text-sm font-semibold hover:bg-primaryDark disabled:opacity-50 whitespace-nowrap"
+        >
+          {laster ? "Skriver…" : klart ? "✓ Ferdig" : "Seed VM-kamper"}
+        </button>
+      </div>
+    </section>
   );
 }
 
