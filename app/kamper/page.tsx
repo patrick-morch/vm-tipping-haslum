@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import { useAuth } from "@/lib/auth-context";
 import { useKamper, useMineTips, lagreTip, slettTip } from "@/lib/data";
 import { Match, Prediction } from "@/lib/types";
-import { erNorgeKamp } from "@/lib/vm-data";
+import { erNorgeKamp, LÅS_FØR_KAMP_MS } from "@/lib/vm-data";
 import Skall from "@/components/Skall";
 import Beskytt from "@/components/Beskytt";
 
@@ -27,11 +27,10 @@ function Kamper() {
   const tips = useMineTips(user?.uid);
 
   const nå = Date.now();
-  const neste = kamper
-    .filter((k) => k.starttid > nå)
-    .sort((a, b) => a.starttid - b.starttid)
-    .slice(0, ANTALL);
-  const totalKommende = kamper.filter((k) => k.starttid > nå).length;
+  const åpne = kamper
+    .filter((k) => k.starttid - LÅS_FØR_KAMP_MS > nå)
+    .sort((a, b) => a.starttid - b.starttid);
+  const neste = åpne.slice(0, ANTALL);
   const utenTip = neste.filter((k) => !tips[k.id]).length;
 
   async function lagre(id: string, h: number, b: number) {
@@ -76,12 +75,12 @@ function Kamper() {
         ))}
       </div>
 
-      {totalKommende > ANTALL && (
+      {åpne.length > ANTALL && (
         <Link
           href="/sluttspill"
           className="block text-center bg-surface border border-border hover:border-primary rounded-2xl py-3 text-sm font-medium transition"
         >
-          Se alle {totalKommende} kommende kamper i gruppespill →
+          Se alle {åpne.length} åpne kamper i gruppespill →
         </Link>
       )}
     </div>

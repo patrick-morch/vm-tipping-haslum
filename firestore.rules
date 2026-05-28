@@ -13,9 +13,15 @@ service cloud.firestore {
         && exists(/databases/$(database)/documents/brukere/$(request.auth.uid))
         && get(/databases/$(database)/documents/brukere/$(request.auth.uid)).data.rolle == 'admin';
     }
-    function kampIkkeStartet(matchId) {
+    // Tipping på en kamp låses 1 time før kampstart.
+    function kampAapen(matchId) {
       return exists(/databases/$(database)/documents/kamper/$(matchId))
-        && get(/databases/$(database)/documents/kamper/$(matchId)).data.starttid > request.time.toMillis();
+        && get(/databases/$(database)/documents/kamper/$(matchId)).data.starttid - 3600000 > request.time.toMillis();
+    }
+
+    // Spesialtips låses 1 time før første VM-kamp (11. juni 2026 19:00 UTC = 20:00 norsk tid).
+    function spesialAapen() {
+      return request.time.toMillis() < 1781204400000;
     }
 
     // Brukere: alle innloggede kan lese (ledertavle).
@@ -46,18 +52,19 @@ service cloud.firestore {
       allow read: if erInnlogget();
       allow create: if erInnlogget()
         && request.resource.data.uid == request.auth.uid
-        && kampIkkeStartet(request.resource.data.matchId);
+        && kampAapen(request.resource.data.matchId);
       allow update: if resource.data.uid == request.auth.uid
-        && kampIkkeStartet(resource.data.matchId);
+        && kampAapen(resource.data.matchId);
       allow delete: if resource.data.uid == request.auth.uid
-        && kampIkkeStartet(resource.data.matchId);
+        && kampAapen(resource.data.matchId);
     }
 
-    // Spesialtips: alle kan lese (for ledertavle), eier skriver egen.
+    // Spesialtips: alle kan lese (for ledertavle), eier skriver egen
+    // frem til 1 time før VM-start.
     match /spesialtips/{uid} {
       allow read: if erInnlogget();
-      allow create, update: if erEier(uid);
-      allow delete: if erEier(uid) || erAdmin();
+      allow create, update: if erEier(uid) && spesialAapen();
+      allow delete: if (erEier(uid) && spesialAapen()) || erAdmin();
     }
 
     // Fasit: alle kan lese, bare admin skriver.

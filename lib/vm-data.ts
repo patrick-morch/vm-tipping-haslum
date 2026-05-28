@@ -140,6 +140,23 @@ export function alleGruppekamper(): Match[] {
   });
 }
 
+// Tipping på en kamp låses 1 time før kampstart.
+export const LÅS_FØR_KAMP_MS = 60 * 60 * 1000;
+
+// Spesialtips låses 1 time før første VM-kamp (11. juni 20:00 norsk tid).
+export const SPESIAL_LÅS_TID = (() => {
+  const kamper = alleGruppekamper();
+  return Math.min(...kamper.map((k) => k.starttid)) - LÅS_FØR_KAMP_MS;
+})();
+
+export function kampErLåst(kamp: { starttid: number }, nå = Date.now()): boolean {
+  return nå >= kamp.starttid - LÅS_FØR_KAMP_MS;
+}
+
+export function spesialErLåst(nå = Date.now()): boolean {
+  return nå >= SPESIAL_LÅS_TID;
+}
+
 export const SLUTTSPILL_RUNDER = [
   { id: "32del", navn: "32-delsfinale", antall: 16 },
   { id: "16del", navn: "16-delsfinale", antall: 8 },

@@ -5,7 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useAuth } from "@/lib/auth-context";
 import { useKamper, useMineTips, lagreTip, slettTip } from "@/lib/data";
-import { GRUPPER, NORGE, erNorgeKamp } from "@/lib/vm-data";
+import { GRUPPER, NORGE, erNorgeKamp, kampErLåst } from "@/lib/vm-data";
 import { beregnTabell, kamperMedMineTips } from "@/lib/standings";
 import { Match, Prediction } from "@/lib/types";
 import Skall from "@/components/Skall";
@@ -189,7 +189,7 @@ function KampRad({
     }
   }, [tip]);
 
-  const låst = kamp.starttid <= Date.now();
+  const låst = kampErLåst(kamp);
   const gyldig = hjem !== "" && bort !== "" && Number(hjem) >= 0 && Number(bort) >= 0;
   const tom = hjem === "" && bort === "";
   const erNorge = erNorgeKamp(kamp);
