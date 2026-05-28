@@ -247,10 +247,11 @@ function KnockoutFane() {
               </div>
             </div>
           </div>
+
+          {/* Bronsefinale — off-bracket kolonne */}
+          <BronseKolonne sporHøyde={SPOR * RAD_PX} />
         </div>
       </div>
-
-      <BronseSeksjon />
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
         <div className="bg-surface border border-border rounded-2xl p-3 text-center text-xs text-muted">
@@ -267,46 +268,62 @@ function KnockoutFane() {
   );
 }
 
-function BronseSeksjon() {
+function BronseKolonne({ sporHøyde }: { sporHøyde: number }) {
   const kamper = useKamper();
   const bronse = kamper.find((k) => k.runde === "Bronsefinale");
 
-  const dato = bronse
-    ? new Date(bronse.starttid).toLocaleDateString("nb-NO", {
-        weekday: "long",
-        day: "2-digit",
-        month: "short",
-      })
-    : "18. juli";
+  return (
+    <div className="flex-shrink-0 w-[150px]">
+      <div className="mb-3 text-center">
+        <div className="text-[10px] font-bold text-warning uppercase tracking-[0.12em]">
+          Bronse
+        </div>
+        <div className="text-[9px] text-warning/70 mt-0.5">18. juli</div>
+      </div>
+      <div
+        className="flex items-center justify-center"
+        style={{ height: sporHøyde }}
+      >
+        <BronseKort kamp={bronse} />
+      </div>
+    </div>
+  );
+}
+
+function BronseKort({
+  kamp,
+}: {
+  kamp?: { hjemmelag: string; bortelag: string; resultat?: { hjemme: number; borte: number } | null };
+}) {
+  const lagH = kamp ? kortLagNavn(kamp.hjemmelag) : "TBD";
+  const lagB = kamp ? kortLagNavn(kamp.bortelag) : "TBD";
+  const fH = kamp ? flagg(kamp.hjemmelag) : "🏳";
+  const fB = kamp ? flagg(kamp.bortelag) : "🏳";
+  const scoreH = kamp?.resultat?.hjemme ?? "–";
+  const scoreB = kamp?.resultat?.borte ?? "–";
 
   return (
-    <div className="relative overflow-hidden rounded-2xl border border-warning/30 bg-gradient-to-br from-warning/10 via-warning/5 to-transparent p-4">
-      <div className="absolute -top-8 -right-8 w-32 h-32 rounded-full bg-warning/15 blur-2xl pointer-events-none" />
-      <div className="relative flex items-center gap-4">
-        <div className="text-4xl flex-shrink-0">🥉</div>
-        <div className="min-w-0 flex-1">
-          <div className="text-[10px] uppercase tracking-[0.15em] font-bold text-warning">
-            Bronsefinale
-          </div>
-          <div className="font-semibold text-sm mt-0.5">
-            {bronse ? (
-              <>
-                {flagg(bronse.hjemmelag)} {kortLagNavn(bronse.hjemmelag)} –{" "}
-                {kortLagNavn(bronse.bortelag)} {flagg(bronse.bortelag)}
-              </>
-            ) : (
-              "TBD vs TBD"
-            )}
-          </div>
-          <div className="text-[11px] text-muted mt-0.5">
-            {dato}
-            {bronse?.resultat && (
-              <span className="ml-2 font-bold text-text">
-                {bronse.resultat.hjemme}–{bronse.resultat.borte}
-              </span>
-            )}
-          </div>
+    <div className="w-full bg-gradient-to-br from-warning/15 via-warning/5 to-transparent border border-warning/40 rounded-xl overflow-hidden shadow-[0_0_24px_rgb(var(--warning)/0.08)]">
+      <div className="text-center pt-2 pb-1">
+        <div className="text-2xl leading-none">🥉</div>
+      </div>
+      <div className="flex items-center justify-between gap-2 px-2.5 py-1.5 border-t border-warning/15">
+        <div className="flex items-center gap-1.5 min-w-0 flex-1">
+          <span className="text-sm flex-shrink-0">{fH}</span>
+          <span className="text-[11px] text-muted truncate">{lagH}</span>
         </div>
+        <span className="text-xs text-muted font-mono tabular-nums w-4 text-right">
+          {scoreH}
+        </span>
+      </div>
+      <div className="flex items-center justify-between gap-2 px-2.5 py-1.5">
+        <div className="flex items-center gap-1.5 min-w-0 flex-1">
+          <span className="text-sm flex-shrink-0">{fB}</span>
+          <span className="text-[11px] text-muted truncate">{lagB}</span>
+        </div>
+        <span className="text-xs text-muted font-mono tabular-nums w-4 text-right">
+          {scoreB}
+        </span>
       </div>
     </div>
   );
