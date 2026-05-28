@@ -14,6 +14,7 @@ import {
   NORGE,
   erNorgeKamp,
   kampErLåst,
+  kortLagNavn,
 } from "@/lib/vm-data";
 import { beregnTabell, kamperMedMineTips } from "@/lib/standings";
 import { beregnPoeng } from "@/lib/types";
@@ -197,7 +198,7 @@ function TabellKort({
             >
               {s.posisjon}
             </span>
-            <span className="truncate">{s.lag}</span>
+            <span className="truncate">{kortLagNavn(s.lag)}</span>
             <span className="text-right text-[10px] font-mono text-muted">
               {s.målFor}-{s.målMot}
             </span>
@@ -315,16 +316,16 @@ function KampRad({
         )}
       </div>
       <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
-        <div className="text-right font-medium text-sm truncate">
-          {kamp.hjemmelag}
+        <div className="text-right font-medium text-sm min-w-0 truncate">
+          {kortLagNavn(kamp.hjemmelag)}
         </div>
         <div className="flex items-center gap-1.5">
           <ScoreIn verdi={hjem} onChange={setHjem} låst={låst} />
           <span className="text-muted text-xs">–</span>
           <ScoreIn verdi={bort} onChange={setBort} låst={låst} />
         </div>
-        <div className="text-left font-medium text-sm truncate">
-          {kamp.bortelag}
+        <div className="text-left font-medium text-sm min-w-0 truncate">
+          {kortLagNavn(kamp.bortelag)}
         </div>
       </div>
       {kamp.resultat && (

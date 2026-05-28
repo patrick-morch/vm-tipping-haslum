@@ -5,7 +5,7 @@ import { useSearchParams, useRouter } from "next/navigation";
 import { Suspense } from "react";
 import { useAuth } from "@/lib/auth-context";
 import { useKamper, useMineTips } from "@/lib/data";
-import { GRUPPER, NORGE } from "@/lib/vm-data";
+import { GRUPPER, NORGE, kortLagNavn } from "@/lib/vm-data";
 import { beregnTabell, kamperMedMineTips } from "@/lib/standings";
 import Skall from "@/components/Skall";
 import Beskytt from "@/components/Beskytt";
@@ -125,7 +125,7 @@ function GrupperFane() {
                     >
                       {s.posisjon}
                     </span>
-                    <span className="truncate">{s.lag}</span>
+                    <span className="truncate">{kortLagNavn(s.lag)}</span>
                   </div>
                   <span className="font-mono text-muted">
                     {s.målFor}-{s.målMot} ·{" "}

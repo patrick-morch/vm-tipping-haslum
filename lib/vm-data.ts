@@ -26,6 +26,16 @@ export function erNorgeKamp(k: { hjemmelag: string; bortelag: string }) {
   return k.hjemmelag === NORGE || k.bortelag === NORGE;
 }
 
+// Forkortelser for lag med veldig lange navn (brukes i kort-layouter
+// der plass er trang). Interne lookups bruker det fulle navnet.
+const KORT_LAGNAVN: Record<string, string> = {
+  "Bosnia-Hercegovina": "Bosnia",
+};
+
+export function kortLagNavn(navn: string): string {
+  return KORT_LAGNAVN[navn] || navn;
+}
+
 // Alle 72 gruppekamper. Tider er Eastern Time (UTC-4, sommertid).
 // Format: [gruppe, "MM-DD", "HH:MM (24t ET)", hjem, bort]
 type RåKamp = [string, string, string, string, string];
