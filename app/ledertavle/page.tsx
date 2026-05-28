@@ -38,17 +38,27 @@ function Ledertavle() {
   >("alle");
 
   const rader: LedertavleRad[] = useMemo(() => {
-    if (aggregert?.rader && aggregert.rader.length > 0) return aggregert.rader;
-    return brukere.map((b) => ({
-      uid: b.uid,
-      navn: b.navn,
-      avdeling: "",
-      klubbRolle: b.klubbRolle,
-      poeng: 0,
-      kampPoeng: 0,
-      spesialPoeng: 0,
-      eksakte: 0,
-    }));
+    // Brukere er sannhetskilden for medlemskap. Aggregert gir poeng/delsummer
+    // for de som fantes ved siste aggregering — vi merger så nye registreringer
+    // dukker opp i samme natt med 0p frem til neste aggregering.
+    const aggregertMap = new Map(
+      (aggregert?.rader || []).map((r) => [r.uid, r]),
+    );
+    return brukere
+      .map((b) => {
+        const agg = aggregertMap.get(b.uid);
+        return {
+          uid: b.uid,
+          navn: agg?.navn || b.navn,
+          avdeling: "",
+          klubbRolle: agg?.klubbRolle || b.klubbRolle,
+          poeng: agg?.poeng ?? 0,
+          kampPoeng: agg?.kampPoeng ?? 0,
+          spesialPoeng: agg?.spesialPoeng ?? 0,
+          eksakte: agg?.eksakte ?? 0,
+        };
+      })
+      .sort((a, b) => b.poeng - a.poeng);
   }, [aggregert, brukere]);
 
   const synlige =
