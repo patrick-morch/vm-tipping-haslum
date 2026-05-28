@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useAuth } from "@/lib/auth-context";
 import { useKamper, useMineTips, lagreTip } from "@/lib/data";
 import { Match, Prediction } from "@/lib/types";
+import { erNorgeKamp } from "@/lib/vm-data";
 import Skall from "@/components/Skall";
 import Beskytt from "@/components/Beskytt";
 
@@ -127,9 +128,22 @@ function KampKort({
   });
 
   return (
-    <div className="bg-surface border border-border rounded-2xl p-4">
+    <div
+      className={`bg-surface border rounded-2xl p-4 ${
+        erNorgeKamp(kamp)
+          ? "border-norge/40 shadow-[0_0_0_1px_rgb(var(--norge)/0.15)]"
+          : "border-border"
+      }`}
+    >
       <div className="flex items-center justify-between text-xs text-muted mb-3">
-        <span>{kamp.runde}</span>
+        <div className="flex items-center gap-2">
+          <span>{kamp.runde}</span>
+          {kamp.bonusFaktor > 1 && (
+            <span className="px-2 py-0.5 rounded-full bg-norge/15 text-norge font-semibold text-[10px]">
+              ×{kamp.bonusFaktor} poeng
+            </span>
+          )}
+        </div>
         <span>
           {datoStr} · {klokke}
         </span>

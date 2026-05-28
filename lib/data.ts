@@ -15,10 +15,20 @@ import {
 import { fbDb, isFirebaseConfigured } from "./firebase";
 import {
   localBrukere,
+  localFasit,
+  localGruppeTips,
   localKamper,
+  localSpesialTips,
   localTips,
 } from "./local-store";
-import { Bruker, Match, Prediction } from "./types";
+import {
+  Bruker,
+  Fasit,
+  GruppeTip,
+  Match,
+  Prediction,
+  SpesialTip,
+} from "./types";
 
 function bruker() {
   return isFirebaseConfigured();
@@ -95,6 +105,104 @@ export function useBrukere(): Bruker[] {
   return brukere;
 }
 
+export function useMineGruppeTips(
+  uid: string | undefined,
+): Record<string, GruppeTip> {
+  const [tips, setTips] = useState<Record<string, GruppeTip>>({});
+  useEffect(() => {
+    if (!uid) {
+      setTips({});
+      return;
+    }
+    if (bruker()) {
+      const q = query(
+        collection(fbDb(), "gruppetips"),
+        where("uid", "==", uid),
+      );
+      return onSnapshot(q, (snap) => {
+        const m: Record<string, GruppeTip> = {};
+        snap.docs.forEach((d) => {
+          const t = d.data() as GruppeTip;
+          m[t.gruppe] = t;
+        });
+        setTips(m);
+      });
+    }
+    return localGruppeTips.subscribe((alle) => {
+      const m: Record<string, GruppeTip> = {};
+      Object.values(alle).forEach((t) => {
+        if (t.uid === uid) m[t.gruppe] = t;
+      });
+      setTips(m);
+    });
+  }, [uid]);
+  return tips;
+}
+
+export function useAlleGruppeTips(): GruppeTip[] {
+  const [tips, setTips] = useState<GruppeTip[]>([]);
+  useEffect(() => {
+    if (bruker()) {
+      return onSnapshot(collection(fbDb(), "gruppetips"), (s) =>
+        setTips(s.docs.map((d) => d.data() as GruppeTip)),
+      );
+    }
+    return localGruppeTips.subscribe((alle) => setTips(Object.values(alle)));
+  }, []);
+  return tips;
+}
+
+export function useMittSpesialTip(uid: string | undefined): SpesialTip | null {
+  const [tip, setTip] = useState<SpesialTip | null>(null);
+  useEffect(() => {
+    if (!uid) {
+      setTip(null);
+      return;
+    }
+    if (bruker()) {
+      return onSnapshot(doc(fbDb(), "spesialtips", uid), (s) =>
+        setTip(s.exists() ? (s.data() as SpesialTip) : null),
+      );
+    }
+    return localSpesialTips.subscribe((alle) => setTip(alle[uid] || null));
+  }, [uid]);
+  return tip;
+}
+
+export function useAlleSpesialTips(): SpesialTip[] {
+  const [tips, setTips] = useState<SpesialTip[]>([]);
+  useEffect(() => {
+    if (bruker()) {
+      return onSnapshot(collection(fbDb(), "spesialtips"), (s) =>
+        setTips(s.docs.map((d) => d.data() as SpesialTip)),
+      );
+    }
+    return localSpesialTips.subscribe((alle) => setTips(Object.values(alle)));
+  }, []);
+  return tips;
+}
+
+export function useFasit(): Fasit {
+  const [fasit, setFasit] = useState<Fasit>({
+    gruppeVinner: {},
+    gruppeToer: {},
+    vmVinner: "",
+    vmFinalist: "",
+    toppscorer: "",
+    toppassist: "",
+    mestRødeKort: "",
+  });
+  useEffect(() => {
+    if (bruker()) {
+      return onSnapshot(doc(fbDb(), "fasit", "vm"), (s) => {
+        if (s.exists()) setFasit(s.data() as Fasit);
+      });
+    }
+    return localFasit.subscribe(setFasit);
+  }, []);
+  return fasit;
+}
+
 export async function lagreTip(p: Prediction) {
   if (bruker()) {
     const id = `${p.uid}_${p.matchId}`;
@@ -104,6 +212,34 @@ export async function lagreTip(p: Prediction) {
   const id = `${p.uid}_${p.matchId}`;
   const alle = localTips.get();
   localTips.set({ ...alle, [id]: p });
+}
+
+export async function lagreGruppeTip(t: GruppeTip) {
+  if (bruker()) {
+    const id = `${t.uid}_${t.gruppe}`;
+    await setDoc(doc(fbDb(), "gruppetips", id), t);
+    return;
+  }
+  const id = `${t.uid}_${t.gruppe}`;
+  const alle = localGruppeTips.get();
+  localGruppeTips.set({ ...alle, [id]: t });
+}
+
+export async function lagreSpesialTip(t: SpesialTip) {
+  if (bruker()) {
+    await setDoc(doc(fbDb(), "spesialtips", t.uid), t);
+    return;
+  }
+  const alle = localSpesialTips.get();
+  localSpesialTips.set({ ...alle, [t.uid]: t });
+}
+
+export async function lagreFasit(f: Fasit) {
+  if (bruker()) {
+    await setDoc(doc(fbDb(), "fasit", "vm"), f);
+    return;
+  }
+  localFasit.set(f);
 }
 
 export async function leggTilKamp(k: Omit<Match, "id">) {
@@ -133,10 +269,4 @@ export async function settResultat(
       k.id === matchId ? { ...k, resultat: { hjemme, borte } } : k,
     ),
   );
-}
-
-export async function slettKamp(matchId: string) {
-  if (bruker()) return; // ikke implementert i Firestore — manuell admin
-  const liste = localKamper.get();
-  localKamper.set(liste.filter((k) => k.id !== matchId));
 }

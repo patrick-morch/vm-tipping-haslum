@@ -1,34 +1,38 @@
 import type { Config } from "tailwindcss";
 
+const c = (v: string) => `rgb(var(${v}) / <alpha-value>)`;
+
 const config: Config = {
   content: [
     "./app/**/*.{js,ts,jsx,tsx,mdx}",
     "./components/**/*.{js,ts,jsx,tsx,mdx}",
   ],
+  darkMode: ["selector", '[data-theme="dark"]'],
   theme: {
     extend: {
       colors: {
-        bg: "#0B0F14",
-        surface: "#121821",
-        elevated: "#1A2230",
-        border: "#243042",
-        text: "#F5F7FA",
-        muted: "#8A95A8",
-        primary: "#22D39A",
-        primaryDark: "#16A879",
-        accent: "#3B82F6",
-        danger: "#EF4444",
-        warning: "#F59E0B",
+        bg: c("--bg"),
+        surface: c("--surface"),
+        elevated: c("--elevated"),
+        border: c("--border"),
+        text: c("--text"),
+        muted: c("--muted"),
+        primary: c("--primary"),
+        primaryFg: c("--primary-fg"),
+        primaryDark: c("--primary-dark"),
+        accent: c("--accent"),
+        norge: c("--norge"),
+        gold: c("--gold"),
+        success: c("--success"),
+        danger: c("--danger"),
+        warning: c("--warning"),
       },
       fontFamily: {
         sans: ["Inter", "system-ui", "-apple-system", "sans-serif"],
       },
-      borderRadius: {
-        xl: "14px",
-        "2xl": "20px",
-      },
+      borderRadius: { xl: "14px", "2xl": "20px" },
       boxShadow: {
-        card: "0 1px 2px rgba(0,0,0,0.2), 0 8px 24px rgba(0,0,0,0.18)",
+        card: "0 1px 2px rgba(0,0,0,0.06), 0 8px 24px rgba(0,0,0,0.08)",
       },
     },
   },

@@ -1,6 +1,14 @@
 "use client";
 
-import { Bruker, Match, Prediction } from "./types";
+import {
+  Bruker,
+  Fasit,
+  GruppeTip,
+  Match,
+  Prediction,
+  SpesialTip,
+} from "./types";
+import { NORGE_KAMPER, ANDRE_DEMOKAMPER } from "./vm-data";
 
 type Listener<T> = (val: T) => void;
 
@@ -49,53 +57,28 @@ class Store<T> {
   }
 }
 
-const seedKamper = (): Match[] => {
-  const idag = new Date();
-  idag.setHours(20, 0, 0, 0);
-  const dag = 24 * 60 * 60 * 1000;
-  return [
-    {
-      id: "demo-1",
-      hjemmelag: "Norge",
-      bortelag: "Brasil",
-      starttid: idag.getTime() + dag,
-      runde: "Gruppespill",
-      bonusFaktor: 1,
-      resultat: null,
-    },
-    {
-      id: "demo-2",
-      hjemmelag: "Frankrike",
-      bortelag: "Argentina",
-      starttid: idag.getTime() + 2 * dag,
-      runde: "Gruppespill",
-      bonusFaktor: 1,
-      resultat: null,
-    },
-    {
-      id: "demo-3",
-      hjemmelag: "Tyskland",
-      bortelag: "Spania",
-      starttid: idag.getTime() + 3 * dag,
-      runde: "Gruppespill",
-      bonusFaktor: 1,
-      resultat: null,
-    },
-    {
-      id: "demo-4",
-      hjemmelag: "Sverige",
-      bortelag: "Danmark",
-      starttid: idag.getTime() - dag,
-      runde: "Gruppespill",
-      bonusFaktor: 1,
-      resultat: { hjemme: 1, borte: 2 },
-    },
-  ];
-};
+const SEED_VERSJON = 2;
 
 export const localBrukere = new Store<Record<string, Bruker>>("vmt.brukere", {});
 export const localKamper = new Store<Match[]>("vmt.kamper", []);
 export const localTips = new Store<Record<string, Prediction>>("vmt.tips", {});
+export const localGruppeTips = new Store<Record<string, GruppeTip>>(
+  "vmt.gruppetips",
+  {},
+);
+export const localSpesialTips = new Store<Record<string, SpesialTip>>(
+  "vmt.spesialtips",
+  {},
+);
+export const localFasit = new Store<Fasit>("vmt.fasit", {
+  gruppeVinner: {},
+  gruppeToer: {},
+  vmVinner: "",
+  vmFinalist: "",
+  toppscorer: "",
+  toppassist: "",
+  mestRødeKort: "",
+});
 export const localCurrent = new Store<string | null>("vmt.current", null);
 export const localPassord = new Store<Record<string, string>>(
   "vmt.passord",
@@ -104,7 +87,12 @@ export const localPassord = new Store<Record<string, string>>(
 
 export function seedDemo() {
   if (typeof window === "undefined") return;
-  if (!localStorage.getItem("vmt.kamper")) {
-    localKamper.set(seedKamper());
-  }
+  const versjon = Number(localStorage.getItem("vmt.seed") || "0");
+  if (versjon >= SEED_VERSJON) return;
+  const alle = [...NORGE_KAMPER, ...ANDRE_DEMOKAMPER].map((k, i) => ({
+    ...k,
+    id: `vm-${i + 1}`,
+  }));
+  localKamper.set(alle);
+  localStorage.setItem("vmt.seed", String(SEED_VERSJON));
 }

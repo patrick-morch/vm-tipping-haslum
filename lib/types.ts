@@ -2,9 +2,9 @@ export type Match = {
   id: string;
   hjemmelag: string;
   bortelag: string;
-  starttid: number; // unix ms
-  runde: string; // "Gruppespill R1", "Åttedelsfinale", "Finale" osv.
-  bonusFaktor: number; // 1 for gruppespill, 2 for semi/finale
+  starttid: number;
+  runde: string;
+  bonusFaktor: number;
   resultat?: { hjemme: number; borte: number } | null;
 };
 
@@ -25,6 +25,35 @@ export type Bruker = {
   rolle: "medlem" | "admin";
   poeng: number;
   opprettet: number;
+};
+
+export type GruppeTip = {
+  uid: string;
+  gruppe: string; // "A", "B", ..., "L"
+  vinner: string;
+  toer: string;
+  lagretTid: number;
+};
+
+export type SpesialTip = {
+  uid: string;
+  vmVinner: string;
+  vmFinalist: string;
+  toppscorer: string;
+  toppassist: string;
+  mestRødeKort: string;
+  lagretTid: number;
+};
+
+export type Fasit = {
+  // satt av admin
+  gruppeVinner: Record<string, string>; // { A: "Mexico", ... }
+  gruppeToer: Record<string, string>;
+  vmVinner: string;
+  vmFinalist: string;
+  toppscorer: string;
+  toppassist: string;
+  mestRødeKort: string;
 };
 
 export function beregnPoeng(
