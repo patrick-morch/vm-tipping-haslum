@@ -66,6 +66,7 @@ async function aggreger() {
       uid: b.uid,
       navn: b.navn,
       avdeling: b.avdeling || "",
+      klubbRolle: b.klubbRolle || null,
       poeng: 0,
       kampPoeng: 0,
       spesialPoeng: 0,

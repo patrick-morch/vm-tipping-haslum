@@ -33,14 +33,17 @@ function Ledertavle() {
   const { user, demoModus } = useAuth();
   const aggregert = useAggregertLedertavle();
   const brukere = useBrukere();
-  const [avdFilter, setAvdFilter] = useState<string>("alle");
+  const [rolleFilter, setRolleFilter] = useState<
+    "alle" | "trener" | "spiller" | "annet"
+  >("alle");
 
   const rader: LedertavleRad[] = useMemo(() => {
     if (aggregert?.rader && aggregert.rader.length > 0) return aggregert.rader;
     return brukere.map((b) => ({
       uid: b.uid,
       navn: b.navn,
-      avdeling: b.avdeling || "",
+      avdeling: "",
+      klubbRolle: b.klubbRolle,
       poeng: 0,
       kampPoeng: 0,
       spesialPoeng: 0,
@@ -48,16 +51,10 @@ function Ledertavle() {
     }));
   }, [aggregert, brukere]);
 
-  const avdelinger = useMemo(() => {
-    const set = new Set<string>();
-    rader.forEach((r) => r.avdeling && set.add(r.avdeling));
-    return ["alle", ...Array.from(set).sort()];
-  }, [rader]);
-
   const synlige =
-    avdFilter === "alle"
+    rolleFilter === "alle"
       ? rader
-      : rader.filter((r) => r.avdeling === avdFilter);
+      : rader.filter((r) => r.klubbRolle === rolleFilter);
 
   const top3 = synlige.slice(0, 3);
   const resten = synlige.slice(3);
@@ -107,23 +104,29 @@ function Ledertavle() {
         <Podium top3={top3} egenUid={user?.uid} ledersum={leder} />
       )}
 
-      {avdelinger.length > 1 && (
-        <div className="flex gap-2 overflow-x-auto pb-1">
-          {avdelinger.map((a) => (
-            <button
-              key={a}
-              onClick={() => setAvdFilter(a)}
-              className={`h-9 px-3 rounded-xl text-sm whitespace-nowrap transition ${
-                avdFilter === a
-                  ? "bg-primary text-primaryFg font-semibold"
-                  : "bg-elevated border border-border text-muted hover:text-text"
-              }`}
-            >
-              {a === "alle" ? "Alle" : a}
-            </button>
-          ))}
-        </div>
-      )}
+      <div className="grid grid-cols-4 gap-1.5 bg-surface border border-border rounded-2xl p-1.5">
+        {(
+          [
+            { v: "alle", t: "Alle", ikon: "👥" },
+            { v: "trener", t: "Trener", ikon: "🧥" },
+            { v: "spiller", t: "Spiller", ikon: "⚽" },
+            { v: "annet", t: "Annet", ikon: "✨" },
+          ] as const
+        ).map((f) => (
+          <button
+            key={f.v}
+            onClick={() => setRolleFilter(f.v)}
+            className={`h-10 rounded-xl text-xs font-semibold transition flex flex-col items-center justify-center gap-0.5 ${
+              rolleFilter === f.v
+                ? "bg-primary text-primaryFg"
+                : "text-muted hover:text-text"
+            }`}
+          >
+            <span className="text-sm leading-none">{f.ikon}</span>
+            <span className="leading-none">{f.t}</span>
+          </button>
+        ))}
+      </div>
 
       {resten.length > 0 && (
         <ListeKort
@@ -337,8 +340,6 @@ function ListeKort({
                 )}
               </div>
               <div className="text-[11px] text-muted truncate flex items-center gap-1.5">
-                {rad.avdeling && <span>{rad.avdeling}</span>}
-                {rad.avdeling && <span>·</span>}
                 <span>
                   K {rad.kampPoeng}{" "}
                   {rad.eksakte > 0 && (

@@ -450,7 +450,6 @@ function MedlemmerSeksjon({
                 </div>
                 <div className="text-[11px] text-muted truncate">
                   {b.epost}
-                  {b.avdeling ? ` · ${b.avdeling}` : ""}
                 </div>
               </div>
               <button

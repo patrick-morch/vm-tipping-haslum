@@ -142,6 +142,7 @@ export type LedertavleRad = {
   uid: string;
   navn: string;
   avdeling: string;
+  klubbRolle?: "trener" | "spiller" | "annet";
   poeng: number;
   kampPoeng: number;
   spesialPoeng: number;

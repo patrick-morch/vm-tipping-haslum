@@ -12,7 +12,6 @@ import {
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
   signOut,
-  sendPasswordResetEmail,
   updateProfile,
   User,
 } from "firebase/auth";
@@ -37,10 +36,8 @@ type AuthCtx = {
     passord: string,
     navn: string,
     klubbRolle: KlubbRolle,
-    avdeling?: string,
   ) => Promise<void>;
   loggUt: () => Promise<void>;
-  glemtPassord: (epost: string) => Promise<void>;
   gjørAdmin: () => void;
 };
 
@@ -126,7 +123,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     passord: string,
     navn: string,
     klubbRolle: KlubbRolle,
-    avdeling?: string,
   ) {
     if (fbActive) {
       const cred = await createUserWithEmailAndPassword(
@@ -139,7 +135,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         uid: cred.user.uid,
         epost,
         navn,
-        avdeling: avdeling || "",
         klubbRolle,
         rolle: "medlem",
         poeng: 0,
@@ -163,7 +158,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       uid,
       epost,
       navn,
-      avdeling: avdeling || "",
       klubbRolle,
       rolle: Object.keys(localBrukere.get()).length === 0 ? "admin" : "medlem",
       poeng: 0,
@@ -180,16 +174,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return;
     }
     localCurrent.set(null);
-  }
-
-  async function glemtPassord(epost: string) {
-    if (fbActive) {
-      await sendPasswordResetEmail(fbAuth(), epost);
-      return;
-    }
-    throw new Error(
-      "Glemt passord er ikke tilgjengelig i demo-modus. Slett nettleserdata for å nullstille.",
-    );
   }
 
   function gjørAdmin() {
@@ -210,7 +194,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         loggInn,
         registrer,
         loggUt,
-        glemtPassord,
         gjørAdmin,
       }}
     >
