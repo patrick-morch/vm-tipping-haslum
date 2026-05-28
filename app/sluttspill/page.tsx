@@ -146,26 +146,34 @@ function GrupperFane() {
 
 function KnockoutFane() {
   const SPOR = 16;
-  const RAD_PX = 52;
+  const RAD_PX = 60;
 
   const runder = [
-    { id: "32del", kort: "Sekstendedels", kamper: 16 },
-    { id: "16del", kort: "Åttendedels", kamper: 8 },
-    { id: "kvart", kort: "Kvart", kamper: 4 },
-    { id: "semi", kort: "Semi", kamper: 2 },
-    { id: "finale", kort: "Finale", kamper: 1 },
+    { id: "32del", kort: "Sekstendedels", periode: "28. jun – 3. jul", kamper: 16 },
+    { id: "16del", kort: "Åttendedels", periode: "4 – 7. jul", kamper: 8 },
+    { id: "kvart", kort: "Kvartfinale", periode: "9 – 11. jul", kamper: 4 },
+    { id: "semi", kort: "Semifinale", periode: "14 – 15. jul", kamper: 2 },
+    { id: "finale", kort: "Finale", periode: "19. juli", kamper: 1 },
   ];
 
   return (
     <div className="space-y-3">
-      <div className="bg-surface border border-border rounded-2xl p-3 overflow-x-auto">
-        <div className="flex gap-2.5 min-w-max">
-          {runder.map((r) => {
+      <div className="relative bg-gradient-to-br from-surface via-surface to-elevated/30 border border-border rounded-3xl p-4 overflow-x-auto">
+        {/* Subtle bakgrunnsmønster */}
+        <div className="absolute inset-0 pointer-events-none opacity-30 [background-image:radial-gradient(circle_at_center,rgb(var(--primary)/0.08)_0,transparent_70%)]" />
+
+        <div className="relative flex gap-3 min-w-max">
+          {runder.map((r, ri) => {
             const radPerKamp = SPOR / r.kamper;
             return (
-              <div key={r.id} className="flex-shrink-0 w-[148px]">
-                <div className="text-[10px] font-bold text-muted mb-3 text-center uppercase tracking-[0.08em]">
-                  {r.kort}
+              <div key={r.id} className="flex-shrink-0 w-[156px]">
+                <div className="mb-3 text-center">
+                  <div className="text-[10px] font-bold text-muted uppercase tracking-[0.12em]">
+                    {r.kort}
+                  </div>
+                  <div className="text-[9px] text-muted/70 mt-0.5">
+                    {r.periode}
+                  </div>
                 </div>
                 <div
                   className="grid"
@@ -173,24 +181,49 @@ function KnockoutFane() {
                     gridTemplateRows: `repeat(${SPOR}, ${RAD_PX}px)`,
                   }}
                 >
-                  {Array.from({ length: r.kamper }).map((_, i) => (
-                    <div
-                      key={i}
-                      style={{
-                        gridRow: `${i * radPerKamp + 1} / span ${radPerKamp}`,
-                      }}
-                      className="flex items-center px-1"
-                    >
-                      <KampKort />
-                    </div>
-                  ))}
+                  {Array.from({ length: r.kamper }).map((_, i) => {
+                    const erFinale = ri === runder.length - 1;
+                    return (
+                      <div
+                        key={i}
+                        style={{
+                          gridRow: `${i * radPerKamp + 1} / span ${radPerKamp}`,
+                        }}
+                        className="flex items-center px-1 relative"
+                      >
+                        {/* Connector-linje til neste runde */}
+                        {ri < runder.length - 1 && (
+                          <div className="absolute right-[-12px] top-1/2 w-3 h-px bg-border/60" />
+                        )}
+                        {/* Vertikal connector mellom pair-kamper */}
+                        {ri > 0 && i % 2 === 0 && (
+                          <div
+                            className="absolute left-[-12px] w-px bg-border/60"
+                            style={{
+                              top: `${RAD_PX * (radPerKamp / 2) / 2 + 30}px`,
+                              height: `${RAD_PX * radPerKamp / 2}px`,
+                            }}
+                          />
+                        )}
+                        {ri > 0 && (
+                          <div className="absolute left-[-12px] top-1/2 w-3 h-px bg-border/60" />
+                        )}
+                        <KampKort fremhevet={erFinale} />
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             );
           })}
-          <div className="flex-shrink-0 w-[160px]">
-            <div className="text-[10px] font-bold text-gold mb-3 text-center uppercase tracking-[0.08em]">
-              Verdensmester
+
+          {/* Verdensmester-kolonne */}
+          <div className="flex-shrink-0 w-[180px]">
+            <div className="mb-3 text-center">
+              <div className="text-[10px] font-bold text-gold uppercase tracking-[0.12em]">
+                Verdensmester
+              </div>
+              <div className="text-[9px] text-gold/70 mt-0.5">19. juli</div>
             </div>
             <div
               className="grid"
@@ -200,42 +233,57 @@ function KnockoutFane() {
             >
               <div
                 style={{ gridRow: `1 / span ${SPOR}` }}
-                className="flex items-center px-1"
+                className="flex items-center px-1 relative"
               >
+                <div className="absolute left-[-12px] top-1/2 w-3 h-px bg-gold/40" />
                 <VinnerKort />
               </div>
             </div>
           </div>
         </div>
       </div>
-      <div className="bg-surface border border-border rounded-2xl p-3 text-center text-xs text-muted">
-        Knockout-kampene fylles inn automatisk når gruppespillet er ferdig 27.
-        juni. Du kan tippe hver kamp på{" "}
-        <Link href="/kamper" className="text-primary font-semibold">
-          Kamper
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+        <div className="bg-surface border border-border rounded-2xl p-3 text-center text-xs text-muted">
+          Kampene fylles automatisk inn etter 27. juni.
+        </div>
+        <Link
+          href="/kamper"
+          className="bg-surface border border-primary/30 rounded-2xl p-3 text-center text-xs text-primary font-semibold hover:bg-primary/5 transition"
+        >
+          Tipp neste kamper →
         </Link>
-        .
       </div>
     </div>
   );
 }
 
-function KampKort() {
+function KampKort({ fremhevet }: { fremhevet?: boolean }) {
   return (
-    <div className="w-full bg-elevated border border-border rounded-lg overflow-hidden shadow-sm">
-      <div className="flex items-center justify-between px-2.5 py-1.5 border-b border-border/60">
-        <div className="flex items-center gap-1.5 min-w-0">
-          <div className="w-2.5 h-2.5 rounded-full bg-border flex-shrink-0" />
+    <div
+      className={`w-full rounded-xl overflow-hidden transition-all ${
+        fremhevet
+          ? "bg-gradient-to-br from-gold/15 to-transparent border border-gold/30 shadow-[0_0_20px_rgb(var(--gold)/0.08)]"
+          : "bg-elevated border border-border hover:border-primary/30"
+      }`}
+    >
+      <div className="flex items-center justify-between gap-2 px-3 py-2 border-b border-border/40">
+        <div className="flex items-center gap-2 min-w-0 flex-1">
+          <div className="w-5 h-5 rounded-full bg-border/60 border border-border flex-shrink-0" />
           <span className="text-[11px] text-muted truncate">TBD</span>
         </div>
-        <span className="text-[11px] text-muted font-mono tabular-nums">–</span>
+        <span className="text-xs text-muted font-mono tabular-nums w-4 text-right">
+          –
+        </span>
       </div>
-      <div className="flex items-center justify-between px-2.5 py-1.5">
-        <div className="flex items-center gap-1.5 min-w-0">
-          <div className="w-2.5 h-2.5 rounded-full bg-border flex-shrink-0" />
+      <div className="flex items-center justify-between gap-2 px-3 py-2">
+        <div className="flex items-center gap-2 min-w-0 flex-1">
+          <div className="w-5 h-5 rounded-full bg-border/60 border border-border flex-shrink-0" />
           <span className="text-[11px] text-muted truncate">TBD</span>
         </div>
-        <span className="text-[11px] text-muted font-mono tabular-nums">–</span>
+        <span className="text-xs text-muted font-mono tabular-nums w-4 text-right">
+          –
+        </span>
       </div>
     </div>
   );
@@ -243,12 +291,26 @@ function KampKort() {
 
 function VinnerKort() {
   return (
-    <div className="w-full bg-gradient-to-br from-gold/25 via-gold/10 to-transparent border border-gold/50 rounded-xl p-3 text-center shadow-[0_0_0_1px_rgb(var(--gold)/0.1)]">
-      <div className="text-3xl mb-1.5">🏆</div>
-      <div className="text-[9px] text-gold uppercase tracking-[0.1em] mb-0.5 font-bold">
-        Champion
+    <div className="relative w-full rounded-2xl overflow-hidden">
+      {/* Glow */}
+      <div className="absolute inset-0 bg-gradient-to-br from-gold/30 via-gold/10 to-transparent" />
+      <div className="absolute -inset-4 bg-gold/10 blur-2xl pointer-events-none" />
+
+      <div className="relative border-2 border-gold/50 rounded-2xl p-4 text-center bg-bg/40 backdrop-blur">
+        <div className="text-4xl mb-2 drop-shadow-[0_2px_8px_rgb(var(--gold)/0.4)]">
+          🏆
+        </div>
+        <div className="text-[9px] text-gold uppercase tracking-[0.15em] font-bold mb-1">
+          Verdensmester
+        </div>
+        <div className="text-sm font-bold text-gold/80">TBD</div>
+        <div className="mt-2 pt-2 border-t border-gold/20">
+          <div className="text-[9px] text-gold/60 uppercase tracking-wider">
+            Finale
+          </div>
+          <div className="text-[10px] text-muted">19. juli</div>
+        </div>
       </div>
-      <div className="text-sm font-bold text-text/70">TBD</div>
     </div>
   );
 }
