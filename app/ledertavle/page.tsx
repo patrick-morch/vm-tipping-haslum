@@ -141,8 +141,11 @@ function DinPlasseringKort({
         <div className="text-[10px] text-primary uppercase tracking-wider font-bold">
           Din plassering
         </div>
-        <div className="font-bold truncate">{rad.navn}</div>
-        <div className="text-[11px] text-muted">
+        <div className="font-bold leading-tight flex items-center gap-2 flex-wrap">
+          <span>{rad.navn}</span>
+          {rad.klubbRolle && <RolleBadge rolle={rad.klubbRolle} />}
+        </div>
+        <div className="text-[11px] text-muted mt-0.5">
           {rad.kampPoeng}p kamper · {rad.spesialPoeng}p spesial · av {total}{" "}
           medlemmer
         </div>
@@ -154,6 +157,24 @@ function DinPlasseringKort({
         </div>
       </div>
     </div>
+  );
+}
+
+function RolleBadge({
+  rolle,
+}: {
+  rolle: "trener" | "spiller" | "annet";
+}) {
+  const v = {
+    trener: { ikon: "🧥", label: "Trener" },
+    spiller: { ikon: "⚽", label: "Spiller" },
+    annet: { ikon: "👥", label: "Annet" },
+  }[rolle];
+  return (
+    <span className="text-[9px] px-1.5 py-0.5 rounded-md bg-elevated border border-border text-muted font-semibold uppercase tracking-wider inline-flex items-center gap-1">
+      <span>{v.ikon}</span>
+      {v.label}
+    </span>
   );
 }
 
@@ -262,10 +283,22 @@ function PodiumKort({
         >
           {initialer(rad.navn)}
         </div>
-        <div className="font-bold text-xs truncate px-1" title={rad.navn}>
+        <div
+          className="font-bold text-xs px-1 leading-tight break-words"
+          title={rad.navn}
+        >
           {rad.navn}
           {egen && <span className="text-primary text-[10px] ml-1">(deg)</span>}
         </div>
+        {rad.klubbRolle && (
+          <div className="text-[9px] text-muted uppercase tracking-wider">
+            {rad.klubbRolle === "trener"
+              ? "🧥 Trener"
+              : rad.klubbRolle === "spiller"
+                ? "⚽ Spiller"
+                : "👥 Annet"}
+          </div>
+        )}
         <div className={plass === 1 ? "text-2xl font-bold" : "text-lg font-bold"}>
           {rad.poeng}
           <span className="text-[10px] text-muted font-normal ml-0.5">p</span>
@@ -334,13 +367,16 @@ function ListeKort({
               <div className="text-sm font-bold text-muted">{plass}</div>
             </div>
             <div className="min-w-0">
-              <div className="font-semibold truncate flex items-center gap-2">
-                {rad.navn}
+              <div className="font-semibold flex items-center gap-2 flex-wrap leading-tight">
+                <span>{rad.navn}</span>
+                {rad.klubbRolle && <RolleBadge rolle={rad.klubbRolle} />}
                 {egen && (
-                  <span className="text-[10px] text-primary font-bold">DEG</span>
+                  <span className="text-[10px] text-primary font-bold">
+                    DEG
+                  </span>
                 )}
               </div>
-              <div className="text-[11px] text-muted truncate flex items-center gap-1.5">
+              <div className="text-[11px] text-muted truncate flex items-center gap-1.5 mt-0.5">
                 <span>
                   K {rad.kampPoeng}{" "}
                   {rad.eksakte > 0 && (
