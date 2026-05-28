@@ -4,9 +4,9 @@ import Link from "next/link";
 import { useSearchParams, useRouter } from "next/navigation";
 import { Suspense } from "react";
 import { useAuth } from "@/lib/auth-context";
-import { useKamper, useMineGruppeTips } from "@/lib/data";
+import { useKamper, useMineTips } from "@/lib/data";
 import { GRUPPER, NORGE } from "@/lib/vm-data";
-import { beregnTabell } from "@/lib/standings";
+import { beregnTabell, kamperMedMineTips } from "@/lib/standings";
 import Skall from "@/components/Skall";
 import Beskytt from "@/components/Beskytt";
 
@@ -32,8 +32,7 @@ function Sluttspill() {
       <div>
         <h1 className="text-2xl font-semibold">Sluttspill</h1>
         <p className="text-muted text-sm">
-          Tipp gruppevinner og 2.-plass. Knockout-kamper kan tippes etter 27.
-          juni.
+          Tipp resultatene — tabellen oppdaterer seg automatisk.
         </p>
       </div>
 
@@ -68,7 +67,7 @@ function Sluttspill() {
 function GrupperFane() {
   const { user } = useAuth();
   const kamper = useKamper();
-  const mineTipps = useMineGruppeTips(user?.uid);
+  const tips = useMineTips(user?.uid);
 
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
@@ -76,9 +75,12 @@ function GrupperFane() {
         const gruppeKamper = kamper.filter(
           (k) => k.runde === `Gruppe ${g.id}`,
         );
-        const tabell = beregnTabell(g.lag, gruppeKamper);
+        const predikert = beregnTabell(
+          g.lag,
+          kamperMedMineTips(gruppeKamper, tips),
+        );
+        const tippet = gruppeKamper.filter((k) => tips[k.id]).length;
         const harNorge = g.lag.includes(NORGE);
-        const tip = mineTipps[g.id];
         return (
           <Link
             key={g.id}
@@ -99,16 +101,10 @@ function GrupperFane() {
                   </span>
                 )}
               </div>
-              <span
-                className={`text-[10px] font-semibold ${
-                  tip ? "text-success" : "text-muted"
-                }`}
-              >
-                {tip ? "Tippet" : "Ikke tippet"}
-              </span>
+              <span className="text-[10px] text-muted">{tippet}/6 tippet</span>
             </div>
             <div className="space-y-1">
-              {tabell.map((s) => (
+              {predikert.map((s) => (
                 <div
                   key={s.lag}
                   className={`flex items-center justify-between text-xs ${
@@ -211,7 +207,7 @@ function KnockoutFane() {
       </div>
       <div className="bg-surface border border-border rounded-2xl p-3 text-center text-xs text-muted">
         Knockout-kampene fylles inn automatisk når gruppespillet er ferdig 27.
-        juni. Hver kamp blir tippbar på{" "}
+        juni. Du kan tippe hver kamp på{" "}
         <Link href="/kamper" className="text-primary font-semibold">
           Kamper
         </Link>

@@ -3,7 +3,6 @@
 import { useMemo, useState } from "react";
 import { useAuth } from "@/lib/auth-context";
 import {
-  useAlleGruppeTips,
   useAlleSpesialTips,
   useAlleTips,
   useBrukere,
@@ -11,8 +10,7 @@ import {
   useKamper,
 } from "@/lib/data";
 import { beregnPoeng } from "@/lib/types";
-import { beregnTabell } from "@/lib/standings";
-import { GRUPPER, POENG } from "@/lib/vm-data";
+import { POENG } from "@/lib/vm-data";
 import Skall from "@/components/Skall";
 import Beskytt from "@/components/Beskytt";
 
@@ -32,8 +30,8 @@ type Rad = {
   avdeling: string;
   poeng: number;
   kampPoeng: number;
-  gruppePoeng: number;
   spesialPoeng: number;
+  eksakte: number;
 };
 
 function Ledertavle() {
@@ -41,23 +39,9 @@ function Ledertavle() {
   const brukere = useBrukere();
   const kamper = useKamper();
   const tips = useAlleTips();
-  const gruppeTips = useAlleGruppeTips();
   const spesialTips = useAlleSpesialTips();
   const fasit = useFasit();
   const [avdFilter, setAvdFilter] = useState<string>("alle");
-
-  // Beregn faktiske gruppe-vinnere fra reelle kampresultater
-  const faktiskeGruppeResultater = useMemo(() => {
-    const ut: Record<string, { vinner?: string; toer?: string }> = {};
-    for (const g of GRUPPER) {
-      const gruppeKamper = kamper.filter((k) => k.runde === `Gruppe ${g.id}`);
-      const alleFerdig = gruppeKamper.length === 6 && gruppeKamper.every((k) => k.resultat);
-      if (!alleFerdig) continue;
-      const tabell = beregnTabell(g.lag, gruppeKamper);
-      ut[g.id] = { vinner: tabell[0]?.lag, toer: tabell[1]?.lag };
-    }
-    return ut;
-  }, [kamper]);
 
   const rader = useMemo<Rad[]>(() => {
     const kampMap = new Map(kamper.map((k) => [k.id, k]));
@@ -69,35 +53,23 @@ function Ledertavle() {
         avdeling: b.avdeling || "",
         poeng: 0,
         kampPoeng: 0,
-        gruppePoeng: 0,
         spesialPoeng: 0,
+        eksakte: 0,
       }),
     );
 
-    // Kamp-poeng: KUN knockout-kamper (gruppespill skåres via gruppe-tipps)
+    // Kamp-poeng: alle kamper (gruppe + knockout) hvor det finnes resultat
     tips.forEach((t) => {
       const rad = map.get(t.uid);
       if (!rad) return;
       const kamp = kampMap.get(t.matchId);
       if (!kamp || !kamp.resultat) return;
-      if (kamp.runde.startsWith("Gruppe")) return; // hoppes — telles via gruppetip
       const p = beregnPoeng(t, kamp.resultat, kamp.bonusFaktor || 1);
       rad.kampPoeng += p;
+      if (p >= 3 * (kamp.bonusFaktor || 1)) rad.eksakte += 1;
     });
 
-    // Gruppe-poeng: sammenlign brukerens tipp med faktisk gruppe-tabell
-    gruppeTips.forEach((gt) => {
-      const rad = map.get(gt.uid);
-      if (!rad) return;
-      const fasitG = faktiskeGruppeResultater[gt.gruppe];
-      if (!fasitG) return;
-      if (fasitG.vinner && fasitG.vinner === gt.vinner)
-        rad.gruppePoeng += POENG.gruppeVinner;
-      if (fasitG.toer && fasitG.toer === gt.toer)
-        rad.gruppePoeng += POENG.gruppeToer;
-    });
-
-    // Spesial-poeng (uendret)
+    // Spesial-poeng
     spesialTips.forEach((s) => {
       const rad = map.get(s.uid);
       if (!rad) return;
@@ -118,10 +90,10 @@ function Ledertavle() {
     });
 
     map.forEach((r) => {
-      r.poeng = r.kampPoeng + r.gruppePoeng + r.spesialPoeng;
+      r.poeng = r.kampPoeng + r.spesialPoeng;
     });
     return Array.from(map.values()).sort((a, b) => b.poeng - a.poeng);
-  }, [brukere, kamper, tips, gruppeTips, spesialTips, fasit, faktiskeGruppeResultater]);
+  }, [brukere, kamper, tips, spesialTips, fasit]);
 
   const avdelinger = useMemo(() => {
     const set = new Set<string>();
@@ -200,7 +172,7 @@ function Ledertavle() {
                 </div>
                 <div className="text-[11px] text-muted truncate">
                   {rad.avdeling && <span>{rad.avdeling} · </span>}
-                  Gruppe {rad.gruppePoeng} · Knockout {rad.kampPoeng} · Spesial{" "}
+                  Kamper {rad.kampPoeng} ({rad.eksakte} eksakte) · Spesial{" "}
                   {rad.spesialPoeng}
                 </div>
               </div>
@@ -211,8 +183,8 @@ function Ledertavle() {
       </div>
 
       <p className="text-xs text-muted text-center">
-        Gruppevinner 5p · 2.-plass 3p · Knockout: 3p eksakt / 1p utfall · Norge
-        ×2
+        3p eksakt · 1p riktig utfall · Norge-kamper ×2 · VM-vinner 25p ·
+        Toppscorer 15p · Toppassist 10p
       </p>
     </div>
   );

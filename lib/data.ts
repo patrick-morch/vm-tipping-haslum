@@ -19,7 +19,6 @@ import {
   localBrukere,
   localCurrent,
   localFasit,
-  localGruppeTips,
   localKamper,
   localPassord,
   localSpesialTips,
@@ -28,7 +27,6 @@ import {
 import {
   Bruker,
   Fasit,
-  GruppeTip,
   Match,
   Prediction,
   SpesialTip,
@@ -108,63 +106,6 @@ export function useBrukere(): Bruker[] {
     return localBrukere.subscribe((b) => setBrukere(Object.values(b)));
   }, []);
   return brukere;
-}
-
-export function useMineGruppeTips(
-  uid: string | undefined,
-): Record<string, GruppeTip> {
-  const [tips, setTips] = useState<Record<string, GruppeTip>>({});
-  useEffect(() => {
-    if (!uid) {
-      setTips({});
-      return;
-    }
-    if (bruker()) {
-      const q = query(
-        collection(fbDb(), "gruppetips"),
-        where("uid", "==", uid),
-      );
-      return onSnapshot(q, (snap) => {
-        const m: Record<string, GruppeTip> = {};
-        snap.docs.forEach((d) => {
-          const t = d.data() as GruppeTip;
-          m[t.gruppe] = t;
-        });
-        setTips(m);
-      });
-    }
-    return localGruppeTips.subscribe((alle) => {
-      const m: Record<string, GruppeTip> = {};
-      Object.values(alle).forEach((t) => {
-        if (t.uid === uid) m[t.gruppe] = t;
-      });
-      setTips(m);
-    });
-  }, [uid]);
-  return tips;
-}
-
-export function useAlleGruppeTips(): GruppeTip[] {
-  const [tips, setTips] = useState<GruppeTip[]>([]);
-  useEffect(() => {
-    if (bruker()) {
-      return onSnapshot(collection(fbDb(), "gruppetips"), (s) =>
-        setTips(s.docs.map((d) => d.data() as GruppeTip)),
-      );
-    }
-    return localGruppeTips.subscribe((alle) => setTips(Object.values(alle)));
-  }, []);
-  return tips;
-}
-
-export async function lagreGruppeTip(t: GruppeTip) {
-  const id = `${t.uid}_${t.gruppe}`;
-  if (bruker()) {
-    await setDoc(doc(fbDb(), "gruppetips", id), t);
-    return;
-  }
-  const alle = localGruppeTips.get();
-  localGruppeTips.set({ ...alle, [id]: t });
 }
 
 export function useMittSpesialTip(uid: string | undefined): SpesialTip | null {
