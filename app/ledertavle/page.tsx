@@ -22,9 +22,10 @@ export default function LedertavleSide() {
 
 function initialer(navn: string): string {
   return navn
-    .split(" ")
+    .trim()
+    .split(/\s+/)
+    .filter((d) => d.length > 0)
     .map((d) => d[0])
-    .slice(0, 2)
     .join("")
     .toUpperCase();
 }
@@ -316,7 +317,15 @@ function PodiumKort({
           {stil.medalje}
         </div>
         <div
-          className={`w-10 h-10 mx-auto rounded-full bg-elevated border border-border flex items-center justify-center text-xs font-bold`}
+          className="w-10 h-10 mx-auto rounded-full bg-elevated border border-border flex items-center justify-center font-bold px-1"
+          style={{
+            fontSize:
+              initialer(rad.navn).length <= 2
+                ? "12px"
+                : initialer(rad.navn).length === 3
+                  ? "11px"
+                  : "9px",
+          }}
         >
           {initialer(rad.navn)}
         </div>
