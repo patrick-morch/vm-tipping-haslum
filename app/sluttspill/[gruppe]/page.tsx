@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useAuth } from "@/lib/auth-context";
-import { useKamper, useMineTips, lagreTip } from "@/lib/data";
+import { useKamper, useMineTips, lagreTip, slettTip } from "@/lib/data";
 import { GRUPPER, NORGE, erNorgeKamp } from "@/lib/vm-data";
 import { beregnTabell, kamperMedMineTips } from "@/lib/standings";
 import { Match, Prediction } from "@/lib/types";
@@ -63,6 +63,11 @@ function GruppeDetalj() {
       borte: b,
       lagretTid: Date.now(),
     });
+  }
+
+  async function slett(matchId: string) {
+    if (!user) return;
+    await slettTip(matchId, user.uid);
   }
 
   return (
@@ -150,6 +155,7 @@ function GruppeDetalj() {
             kamp={kamp}
             tip={tips[kamp.id]}
             onLagre={(h, b) => lagre(kamp.id, h, b)}
+            onSlett={() => slett(kamp.id)}
           />
         ))}
       </div>
@@ -161,10 +167,12 @@ function KampRad({
   kamp,
   tip,
   onLagre,
+  onSlett,
 }: {
   kamp: Match;
   tip?: Prediction;
   onLagre: (h: number, b: number) => Promise<void>;
+  onSlett: () => Promise<void>;
 }) {
   const [hjem, setHjem] = useState(tip ? String(tip.hjemme) : "");
   const [bort, setBort] = useState(tip ? String(tip.borte) : "");
@@ -172,23 +180,35 @@ function KampRad({
     if (tip) {
       setHjem(String(tip.hjemme));
       setBort(String(tip.borte));
+    } else {
+      setHjem("");
+      setBort("");
     }
   }, [tip]);
 
   const låst = kamp.starttid <= Date.now();
   const gyldig = hjem !== "" && bort !== "" && Number(hjem) >= 0 && Number(bort) >= 0;
+  const tom = hjem === "" && bort === "";
   const erNorge = erNorgeKamp(kamp);
   const uendret =
-    tip && Number(hjem) === tip.hjemme && Number(bort) === tip.borte;
+    tip && gyldig && Number(hjem) === tip.hjemme && Number(bort) === tip.borte;
 
   useEffect(() => {
-    if (låst || !gyldig || uendret) return;
-    const t = setTimeout(() => {
-      onLagre(Number(hjem), Number(bort));
-    }, 500);
-    return () => clearTimeout(t);
+    if (låst || uendret) return;
+    if (gyldig) {
+      const t = setTimeout(() => {
+        onLagre(Number(hjem), Number(bort));
+      }, 500);
+      return () => clearTimeout(t);
+    }
+    if (tom && tip) {
+      const t = setTimeout(() => {
+        onSlett();
+      }, 500);
+      return () => clearTimeout(t);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hjem, bort, gyldig, uendret, låst]);
+  }, [hjem, bort, gyldig, tom, uendret, låst, Boolean(tip)]);
 
   const dato = new Date(kamp.starttid);
   const datoStr = dato.toLocaleDateString("nb-NO", {

@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import {
   addDoc,
   collection,
+  deleteDoc,
   doc,
   onSnapshot,
   orderBy,
@@ -163,6 +164,17 @@ export async function lagreTip(p: Prediction) {
   const id = `${p.uid}_${p.matchId}`;
   const alle = localTips.get();
   localTips.set({ ...alle, [id]: p });
+}
+
+export async function slettTip(matchId: string, uid: string) {
+  const id = `${uid}_${matchId}`;
+  if (bruker()) {
+    await deleteDoc(doc(fbDb(), "tips", id));
+    return;
+  }
+  const alle = { ...localTips.get() };
+  delete alle[id];
+  localTips.set(alle);
 }
 
 export async function lagreSpesialTip(t: SpesialTip) {

@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useAuth } from "@/lib/auth-context";
-import { useKamper, useMineTips, lagreTip } from "@/lib/data";
+import { useKamper, useMineTips, lagreTip, slettTip } from "@/lib/data";
 import { Match, Prediction } from "@/lib/types";
 import { erNorgeKamp } from "@/lib/vm-data";
 import Skall from "@/components/Skall";
@@ -46,6 +46,11 @@ function Kamper() {
     });
   }
 
+  async function slett(id: string) {
+    if (!user) return;
+    await slettTip(id, user.uid);
+  }
+
   return (
     <div className="space-y-4">
       <div>
@@ -66,6 +71,7 @@ function Kamper() {
             kamp={kamp}
             tip={tips[kamp.id]}
             onLagre={(h, b) => lagre(kamp.id, h, b)}
+            onSlett={() => slett(kamp.id)}
           />
         ))}
       </div>
@@ -86,10 +92,12 @@ function KampKort({
   kamp,
   tip,
   onLagre,
+  onSlett,
 }: {
   kamp: Match;
   tip?: Prediction;
   onLagre: (h: number, b: number) => Promise<void>;
+  onSlett: () => Promise<void>;
 }) {
   const [hjem, setHjem] = useState(tip ? String(tip.hjemme) : "");
   const [bort, setBort] = useState(tip ? String(tip.borte) : "");
@@ -97,22 +105,34 @@ function KampKort({
     if (tip) {
       setHjem(String(tip.hjemme));
       setBort(String(tip.borte));
+    } else {
+      setHjem("");
+      setBort("");
     }
   }, [tip]);
 
   const gyldig = hjem !== "" && bort !== "" && Number(hjem) >= 0 && Number(bort) >= 0;
+  const tom = hjem === "" && bort === "";
   const erNorge = erNorgeKamp(kamp);
   const uendret =
-    tip && Number(hjem) === tip.hjemme && Number(bort) === tip.borte;
+    tip && gyldig && Number(hjem) === tip.hjemme && Number(bort) === tip.borte;
 
   useEffect(() => {
-    if (!gyldig || uendret) return;
-    const t = setTimeout(() => {
-      onLagre(Number(hjem), Number(bort));
-    }, 500);
-    return () => clearTimeout(t);
+    if (uendret) return;
+    if (gyldig) {
+      const t = setTimeout(() => {
+        onLagre(Number(hjem), Number(bort));
+      }, 500);
+      return () => clearTimeout(t);
+    }
+    if (tom && tip) {
+      const t = setTimeout(() => {
+        onSlett();
+      }, 500);
+      return () => clearTimeout(t);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hjem, bort, gyldig, uendret]);
+  }, [hjem, bort, gyldig, tom, uendret, Boolean(tip)]);
 
   const dato = new Date(kamp.starttid);
   const datoStr = dato.toLocaleDateString("nb-NO", {
