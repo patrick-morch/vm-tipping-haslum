@@ -3,14 +3,10 @@
 import { useMemo, useState } from "react";
 import { useAuth } from "@/lib/auth-context";
 import {
-  useAlleSpesialTips,
-  useAlleTips,
+  useAggregertLedertavle,
   useBrukere,
-  useFasit,
-  useKamper,
+  type LedertavleRad,
 } from "@/lib/data";
-import { beregnPoeng } from "@/lib/types";
-import { POENG } from "@/lib/vm-data";
 import Skall from "@/components/Skall";
 import Beskytt from "@/components/Beskytt";
 
@@ -24,98 +20,67 @@ export default function LedertavleSide() {
   );
 }
 
-type Rad = {
-  uid: string;
-  navn: string;
-  avdeling: string;
-  poeng: number;
-  kampPoeng: number;
-  spesialPoeng: number;
-  eksakte: number;
-};
-
 function Ledertavle() {
-  const { user } = useAuth();
+  const { user, demoModus } = useAuth();
+  const aggregert = useAggregertLedertavle();
   const brukere = useBrukere();
-  const kamper = useKamper();
-  const tips = useAlleTips();
-  const spesialTips = useAlleSpesialTips();
-  const fasit = useFasit();
   const [avdFilter, setAvdFilter] = useState<string>("alle");
 
-  const rader = useMemo<Rad[]>(() => {
-    const kampMap = new Map(kamper.map((k) => [k.id, k]));
-    const map = new Map<string, Rad>();
-    brukere.forEach((b) =>
-      map.set(b.uid, {
-        uid: b.uid,
-        navn: b.navn,
-        avdeling: b.avdeling || "",
-        poeng: 0,
-        kampPoeng: 0,
-        spesialPoeng: 0,
-        eksakte: 0,
-      }),
-    );
-
-    // Kamp-poeng: alle kamper (gruppe + knockout) hvor det finnes resultat
-    tips.forEach((t) => {
-      const rad = map.get(t.uid);
-      if (!rad) return;
-      const kamp = kampMap.get(t.matchId);
-      if (!kamp || !kamp.resultat) return;
-      const p = beregnPoeng(t, kamp.resultat, kamp.bonusFaktor || 1);
-      rad.kampPoeng += p;
-      if (p >= 3 * (kamp.bonusFaktor || 1)) rad.eksakte += 1;
-    });
-
-    // Spesial-poeng
-    spesialTips.forEach((s) => {
-      const rad = map.get(s.uid);
-      if (!rad) return;
-      if (fasit.vmVinner && fasit.vmVinner === s.vmVinner)
-        rad.spesialPoeng += POENG.vmVinner;
-      if (
-        fasit.toppscorer &&
-        s.toppscorer.trim().toLowerCase() ===
-          fasit.toppscorer.trim().toLowerCase()
-      )
-        rad.spesialPoeng += POENG.toppscorer;
-      if (
-        fasit.toppassist &&
-        s.toppassist.trim().toLowerCase() ===
-          fasit.toppassist.trim().toLowerCase()
-      )
-        rad.spesialPoeng += POENG.toppassist;
-    });
-
-    map.forEach((r) => {
-      r.poeng = r.kampPoeng + r.spesialPoeng;
-    });
-    return Array.from(map.values()).sort((a, b) => b.poeng - a.poeng);
-  }, [brukere, kamper, tips, spesialTips, fasit]);
+  // I demo-modus (eller før første aggregering) viser vi en tom liste
+  // fra brukere-listen så folk i det minste ser navnene sine
+  const rader: LedertavleRad[] = useMemo(() => {
+    if (aggregert?.rader && aggregert.rader.length > 0) return aggregert.rader;
+    return brukere.map((b) => ({
+      uid: b.uid,
+      navn: b.navn,
+      avdeling: b.avdeling || "",
+      poeng: 0,
+      kampPoeng: 0,
+      spesialPoeng: 0,
+      eksakte: 0,
+    }));
+  }, [aggregert, brukere]);
 
   const avdelinger = useMemo(() => {
     const set = new Set<string>();
-    brukere.forEach((b) => b.avdeling && set.add(b.avdeling));
+    rader.forEach((r) => r.avdeling && set.add(r.avdeling));
     return ["alle", ...Array.from(set).sort()];
-  }, [brukere]);
+  }, [rader]);
 
   const synlige =
     avdFilter === "alle"
       ? rader
       : rader.filter((r) => r.avdeling === avdFilter);
 
+  const oppdatert = aggregert?.oppdatert
+    ? new Date(aggregert.oppdatert).toLocaleString("nb-NO", {
+        day: "2-digit",
+        month: "short",
+        hour: "2-digit",
+        minute: "2-digit",
+      })
+    : null;
+
   return (
     <div className="space-y-4">
       <div>
         <h1 className="text-2xl font-semibold">Ledertavle</h1>
         <p className="text-muted text-sm">
-          {brukere.length} medlemmer ·{" "}
-          {kamper.filter((k) => k.resultat).length}/{kamper.length} kamper
-          spilt
+          {aggregert
+            ? `${aggregert.kamperSpilt}/${aggregert.kamperTotalt} kamper spilt`
+            : `${rader.length} medlemmer`}
+          {oppdatert && (
+            <span className="text-[11px] ml-2">· oppdatert {oppdatert}</span>
+          )}
         </p>
       </div>
+
+      {!aggregert && !demoModus && (
+        <div className="bg-warning/10 border border-warning/30 text-warning text-xs rounded-xl px-3 py-2">
+          Ledertavlen oppdateres nattlig kl 03. Første aggregering kommer
+          neste natt — eller admin kan trigge den manuelt.
+        </div>
+      )}
 
       {avdelinger.length > 1 && (
         <div className="flex gap-2 overflow-x-auto pb-1">

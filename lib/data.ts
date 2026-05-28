@@ -138,6 +138,35 @@ export function useAlleSpesialTips(): SpesialTip[] {
   return tips;
 }
 
+export type LedertavleRad = {
+  uid: string;
+  navn: string;
+  avdeling: string;
+  poeng: number;
+  kampPoeng: number;
+  spesialPoeng: number;
+  eksakte: number;
+};
+export type AggregertLedertavle = {
+  oppdatert: number;
+  kamperSpilt: number;
+  kamperTotalt: number;
+  rader: LedertavleRad[];
+};
+
+export function useAggregertLedertavle(): AggregertLedertavle | null {
+  const [data, setData] = useState<AggregertLedertavle | null>(null);
+  useEffect(() => {
+    if (!bruker()) return;
+    return onSnapshot(
+      doc(fbDb(), "aggregert", "ledertavle"),
+      (s) =>
+        setData(s.exists() ? (s.data() as AggregertLedertavle) : null),
+    );
+  }, []);
+  return data;
+}
+
 export function useFasit(): Fasit {
   const [fasit, setFasit] = useState<Fasit>({
     gruppeVinner: {},

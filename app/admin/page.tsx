@@ -53,26 +53,39 @@ function Admin() {
 
 const SYNC_WORKFLOW_URL =
   "https://github.com/patrick-morch/vm-tipping/actions/workflows/sync-resultater.yml";
+const AGGREGER_WORKFLOW_URL =
+  "https://github.com/patrick-morch/vm-tipping/actions/workflows/aggreger-poeng.yml";
 
 function SyncSeksjon() {
   return (
     <section className="bg-surface border border-border rounded-2xl p-4 space-y-3">
       <div>
-        <h2 className="font-semibold">Auto-synk av resultater</h2>
+        <h2 className="font-semibold">Auto-jobber</h2>
         <p className="text-xs text-muted mt-0.5">
-          GitHub Actions kjører hvert 10. min under VM og henter siste
-          resultater fra TheSportsDB. Knockout-fasen genereres automatisk når
-          alle 72 gruppekamper har resultat.
+          To GitHub Actions kjører automatisk: <strong>sync</strong> henter nye
+          resultater fra TheSportsDB hvert 10. min, og{" "}
+          <strong>aggreger poeng</strong> regner ut ledertavlen kl 03 hver natt.
+          Trykk knappene for å trigge dem manuelt.
         </p>
       </div>
-      <a
-        href={SYNC_WORKFLOW_URL}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="block text-center h-10 px-4 rounded-xl bg-elevated border border-border hover:border-primary text-sm font-semibold transition"
-      >
-        Kjør sync nå (GitHub Actions →)
-      </a>
+      <div className="grid grid-cols-2 gap-2">
+        <a
+          href={SYNC_WORKFLOW_URL}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-center h-10 px-3 rounded-xl bg-elevated border border-border hover:border-primary text-sm font-semibold transition"
+        >
+          Synk resultater →
+        </a>
+        <a
+          href={AGGREGER_WORKFLOW_URL}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-center h-10 px-3 rounded-xl bg-elevated border border-border hover:border-primary text-sm font-semibold transition"
+        >
+          Aggreger poeng →
+        </a>
+      </div>
     </section>
   );
 }

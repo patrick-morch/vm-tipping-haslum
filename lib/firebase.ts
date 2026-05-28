@@ -1,6 +1,11 @@
 import { initializeApp, getApps, getApp, FirebaseApp } from "firebase/app";
 import { getAuth, Auth } from "firebase/auth";
-import { getFirestore, Firestore } from "firebase/firestore";
+import {
+  Firestore,
+  initializeFirestore,
+  persistentLocalCache,
+  persistentMultipleTabManager,
+} from "firebase/firestore";
 
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
@@ -28,7 +33,13 @@ function ensure(): { app: FirebaseApp; auth: Auth; db: Firestore } {
   if (!_app) {
     _app = getApps().length ? getApp() : initializeApp(firebaseConfig);
     _auth = getAuth(_app);
-    _db = getFirestore(_app);
+    // IndexedDB-cache: kamper, brukere og ledertavle cachelagres lokalt
+    // og overlever browser-omstart. Sparer enormt mange Firestore-reads.
+    _db = initializeFirestore(_app, {
+      localCache: persistentLocalCache({
+        tabManager: persistentMultipleTabManager(),
+      }),
+    });
   }
   return { app: _app, auth: _auth!, db: _db! };
 }
