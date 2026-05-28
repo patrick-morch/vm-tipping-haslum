@@ -217,18 +217,30 @@ function Countdown({
           : "border-primary/30 bg-gradient-to-br from-primary/15 via-primary/5 to-transparent"
       }`}
     >
-      <div className="flex items-start justify-between gap-3">
+      {/* Watermark Haslum-logo bak innholdet */}
+      <img
+        src="/haslum-logo.jpeg"
+        alt=""
+        aria-hidden
+        className="absolute -right-6 top-1/2 -translate-y-1/2 w-40 h-40 object-contain opacity-[0.06] pointer-events-none"
+      />
+      <div className="relative flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
-          <div
-            className={`text-[10px] uppercase tracking-[0.15em] font-bold ${
-              erNorge ? "text-norge" : "text-primary"
-            }`}
-          >
-            Neste kamp om
+          <div className="flex items-center gap-1.5 mb-0.5">
+            <img
+              src="/haslum-logo.jpeg"
+              alt="Haslum IL"
+              className="w-5 h-5 object-contain"
+            />
+            <span
+              className={`text-[10px] uppercase tracking-[0.15em] font-bold ${
+                erNorge ? "text-norge" : "text-primary"
+              }`}
+            >
+              Neste kamp om
+            </span>
           </div>
-          <div className="text-2xl font-bold leading-tight mt-0.5">
-            {tekst}
-          </div>
+          <div className="text-2xl font-bold leading-tight">{tekst}</div>
           <div className="text-[11px] text-muted mt-1.5 truncate">
             {flagg(kamp.hjemmelag)} {kortLagNavn(kamp.hjemmelag)} – {kortLagNavn(kamp.bortelag)}{" "}
             {flagg(kamp.bortelag)}
