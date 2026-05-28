@@ -67,6 +67,8 @@ function Admin() {
 
       <SeedSeksjon kamper={kamper} />
 
+      <SyncSeksjon />
+
       <MedlemmerSeksjon brukere={brukere} egenUid={bruker.uid} />
 
       <section className="bg-surface border border-border rounded-2xl p-4 space-y-3">
@@ -130,6 +132,32 @@ function Admin() {
         ))}
       </section>
     </div>
+  );
+}
+
+const SYNC_WORKFLOW_URL =
+  "https://github.com/patrick-morch/vm-tipping/actions/workflows/sync-resultater.yml";
+
+function SyncSeksjon() {
+  return (
+    <section className="bg-surface border border-border rounded-2xl p-4 space-y-3">
+      <div>
+        <h2 className="font-semibold">Auto-synk av resultater</h2>
+        <p className="text-xs text-muted mt-0.5">
+          GitHub Actions kjører hvert 10. min under VM og henter siste
+          resultater fra TheSportsDB. Knockout-fasen genereres automatisk når
+          alle 72 gruppekamper har resultat.
+        </p>
+      </div>
+      <a
+        href={SYNC_WORKFLOW_URL}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="block text-center h-10 px-4 rounded-xl bg-elevated border border-border hover:border-primary text-sm font-semibold transition"
+      >
+        Kjør sync nå (GitHub Actions →)
+      </a>
+    </section>
   );
 }
 
