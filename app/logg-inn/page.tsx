@@ -7,7 +7,7 @@ import { useAuth } from "@/lib/auth-context";
 type Modus = "logg-inn" | "registrer" | "glemt";
 
 export default function LoggInn() {
-  const { loggInn, registrer, glemtPassord, konfigurert } = useAuth();
+  const { loggInn, registrer, glemtPassord, demoModus } = useAuth();
   const router = useRouter();
   const [modus, setModus] = useState<Modus>("logg-inn");
   const [epost, setEpost] = useState("");
@@ -54,20 +54,6 @@ export default function LoggInn() {
     }
   }
 
-  if (!konfigurert) {
-    return (
-      <div className="min-h-screen flex items-center justify-center p-6">
-        <div className="max-w-md text-center space-y-3">
-          <h1 className="text-2xl font-semibold">Firebase mangler</h1>
-          <p className="text-muted text-sm">
-            Fyll inn <code className="text-primary">.env.local</code> for å
-            komme i gang.
-          </p>
-        </div>
-      </div>
-    );
-  }
-
   const tittel =
     modus === "logg-inn"
       ? "Logg inn"
@@ -84,6 +70,12 @@ export default function LoggInn() {
           </div>
           <span className="text-xl font-semibold">VM-tipping</span>
         </div>
+
+        {demoModus && (
+          <div className="mb-4 text-xs text-warning bg-warning/10 border border-warning/30 rounded-xl px-3 py-2 text-center">
+            Demo-modus — data lagres bare i nettleseren din
+          </div>
+        )}
 
         <div className="bg-surface border border-border rounded-2xl p-6">
           <h1 className="text-2xl font-semibold mb-1">{tittel}</h1>

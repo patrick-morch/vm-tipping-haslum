@@ -18,13 +18,19 @@ import {
 } from "firebase/auth";
 import { doc, getDoc, setDoc } from "firebase/firestore";
 import { fbAuth, fbDb, isFirebaseConfigured } from "./firebase";
+import {
+  localBrukere,
+  localCurrent,
+  localPassord,
+  seedDemo,
+} from "./local-store";
 import { Bruker } from "./types";
 
 type AuthCtx = {
-  user: User | null;
+  user: { uid: string; email: string } | null;
   bruker: Bruker | null;
   laster: boolean;
-  konfigurert: boolean;
+  demoModus: boolean;
   loggInn: (epost: string, passord: string) => Promise<void>;
   registrer: (
     epost: string,
@@ -34,36 +40,84 @@ type AuthCtx = {
   ) => Promise<void>;
   loggUt: () => Promise<void>;
   glemtPassord: (epost: string) => Promise<void>;
+  gjørAdmin: () => void;
 };
 
 const Ctx = createContext<AuthCtx | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const konfigurert = isFirebaseConfigured();
-  const [user, setUser] = useState<User | null>(null);
+  const fbActive = isFirebaseConfigured();
+  const demoModus = !fbActive;
+  const [user, setUser] = useState<{ uid: string; email: string } | null>(null);
   const [bruker, setBruker] = useState<Bruker | null>(null);
   const [laster, setLaster] = useState(true);
 
   useEffect(() => {
-    if (!konfigurert) {
-      setLaster(false);
-      return;
+    if (fbActive) {
+      const unsub = onAuthStateChanged(fbAuth(), async (u: User | null) => {
+        if (u) {
+          setUser({ uid: u.uid, email: u.email || "" });
+          const snap = await getDoc(doc(fbDb(), "brukere", u.uid));
+          if (snap.exists()) setBruker(snap.data() as Bruker);
+        } else {
+          setUser(null);
+          setBruker(null);
+        }
+        setLaster(false);
+      });
+      return () => unsub();
     }
-    const unsub = onAuthStateChanged(fbAuth(), async (u) => {
-      setUser(u);
-      if (u) {
-        const snap = await getDoc(doc(fbDb(), "brukere", u.uid));
-        if (snap.exists()) setBruker(snap.data() as Bruker);
+
+    // Demo-modus
+    seedDemo();
+    const unsubCurrent = localCurrent.subscribe((uid) => {
+      if (!uid) {
+        setUser(null);
+        setBruker(null);
+        setLaster(false);
+        return;
+      }
+      const b = localBrukere.get()[uid];
+      if (b) {
+        setUser({ uid: b.uid, email: b.epost });
+        setBruker(b);
       } else {
+        setUser(null);
         setBruker(null);
       }
       setLaster(false);
     });
-    return () => unsub();
-  }, [konfigurert]);
+    const unsubBrukere = localBrukere.subscribe((map) => {
+      const uid = localCurrent.get();
+      if (uid && map[uid]) setBruker(map[uid]);
+    });
+    return () => {
+      unsubCurrent();
+      unsubBrukere();
+    };
+  }, [fbActive]);
 
   async function loggInn(epost: string, passord: string) {
-    await signInWithEmailAndPassword(fbAuth(), epost, passord);
+    if (fbActive) {
+      await signInWithEmailAndPassword(fbAuth(), epost, passord);
+      return;
+    }
+    const norm = epost.trim().toLowerCase();
+    const funnet = Object.values(localBrukere.get()).find(
+      (b) => b.epost.toLowerCase() === norm,
+    );
+    if (!funnet) {
+      const err: any = new Error("Bruker finnes ikke.");
+      err.code = "auth/user-not-found";
+      throw err;
+    }
+    const lagret = localPassord.get()[funnet.uid];
+    if (lagret !== passord) {
+      const err: any = new Error("Feil passord.");
+      err.code = "auth/wrong-password";
+      throw err;
+    }
+    localCurrent.set(funnet.uid);
   }
 
   async function registrer(
@@ -72,28 +126,74 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     navn: string,
     avdeling?: string,
   ) {
-    const cred = await createUserWithEmailAndPassword(fbAuth(), epost, passord);
-    await updateProfile(cred.user, { displayName: navn });
-    const nyBruker: Bruker = {
-      uid: cred.user.uid,
+    if (fbActive) {
+      const cred = await createUserWithEmailAndPassword(
+        fbAuth(),
+        epost,
+        passord,
+      );
+      await updateProfile(cred.user, { displayName: navn });
+      const ny: Bruker = {
+        uid: cred.user.uid,
+        epost,
+        navn,
+        avdeling: avdeling || "",
+        rolle: "medlem",
+        poeng: 0,
+        opprettet: Date.now(),
+      };
+      await setDoc(doc(fbDb(), "brukere", cred.user.uid), ny);
+      setBruker(ny);
+      return;
+    }
+    const norm = epost.trim().toLowerCase();
+    const finnes = Object.values(localBrukere.get()).find(
+      (b) => b.epost.toLowerCase() === norm,
+    );
+    if (finnes) {
+      const err: any = new Error("E-posten er allerede registrert.");
+      err.code = "auth/email-already-in-use";
+      throw err;
+    }
+    const uid = `lokal-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+    const ny: Bruker = {
+      uid,
       epost,
       navn,
       avdeling: avdeling || "",
-      rolle: "medlem",
+      rolle: Object.keys(localBrukere.get()).length === 0 ? "admin" : "medlem",
       poeng: 0,
       opprettet: Date.now(),
     };
-    await setDoc(doc(fbDb(), "brukere", cred.user.uid), nyBruker);
-    setBruker(nyBruker);
+    localBrukere.set({ ...localBrukere.get(), [uid]: ny });
+    localPassord.set({ ...localPassord.get(), [uid]: passord });
+    localCurrent.set(uid);
   }
 
   async function loggUt() {
-    if (!konfigurert) return;
-    await signOut(fbAuth());
+    if (fbActive) {
+      await signOut(fbAuth());
+      return;
+    }
+    localCurrent.set(null);
   }
 
   async function glemtPassord(epost: string) {
-    await sendPasswordResetEmail(fbAuth(), epost);
+    if (fbActive) {
+      await sendPasswordResetEmail(fbAuth(), epost);
+      return;
+    }
+    throw new Error(
+      "Glemt passord er ikke tilgjengelig i demo-modus. Slett nettleserdata for å nullstille.",
+    );
+  }
+
+  function gjørAdmin() {
+    if (fbActive || !user) return;
+    const map = localBrukere.get();
+    const b = map[user.uid];
+    if (!b) return;
+    localBrukere.set({ ...map, [user.uid]: { ...b, rolle: "admin" } });
   }
 
   return (
@@ -102,11 +202,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         user,
         bruker,
         laster,
-        konfigurert,
+        demoModus,
         loggInn,
         registrer,
         loggUt,
         glemtPassord,
+        gjørAdmin,
       }}
     >
       {children}

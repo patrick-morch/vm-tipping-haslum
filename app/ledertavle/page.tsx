@@ -1,10 +1,9 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { collection, onSnapshot } from "firebase/firestore";
-import { fbDb } from "@/lib/firebase";
+import { useMemo, useState } from "react";
 import { useAuth } from "@/lib/auth-context";
-import { Bruker, Match, Prediction, beregnPoeng } from "@/lib/types";
+import { useAlleTips, useBrukere, useKamper } from "@/lib/data";
+import { beregnPoeng } from "@/lib/types";
 import Skall from "@/components/Skall";
 import Beskytt from "@/components/Beskytt";
 
@@ -29,27 +28,10 @@ type Rad = {
 
 function Ledertavle() {
   const { user } = useAuth();
-  const [brukere, setBrukere] = useState<Bruker[]>([]);
-  const [kamper, setKamper] = useState<Match[]>([]);
-  const [tips, setTips] = useState<Prediction[]>([]);
+  const brukere = useBrukere();
+  const kamper = useKamper();
+  const tips = useAlleTips();
   const [avdFilter, setAvdFilter] = useState<string>("alle");
-
-  useEffect(() => {
-    const u1 = onSnapshot(collection(fbDb(), "brukere"), (s) =>
-      setBrukere(s.docs.map((d) => d.data() as Bruker)),
-    );
-    const u2 = onSnapshot(collection(fbDb(), "kamper"), (s) =>
-      setKamper(s.docs.map((d) => ({ id: d.id, ...d.data() }) as Match)),
-    );
-    const u3 = onSnapshot(collection(fbDb(), "tips"), (s) =>
-      setTips(s.docs.map((d) => d.data() as Prediction)),
-    );
-    return () => {
-      u1();
-      u2();
-      u3();
-    };
-  }, []);
 
   const rader = useMemo<Rad[]>(() => {
     const kampMap = new Map(kamper.map((k) => [k.id, k]));

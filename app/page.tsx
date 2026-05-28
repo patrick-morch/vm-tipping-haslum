@@ -5,14 +5,14 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
 
 export default function Hjem() {
-  const { user, laster, konfigurert } = useAuth();
+  const { user, laster } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
     if (laster) return;
-    if (!konfigurert || !user) router.replace("/logg-inn");
+    if (!user) router.replace("/logg-inn");
     else router.replace("/kamper");
-  }, [user, laster, konfigurert, router]);
+  }, [user, laster, router]);
 
   return (
     <div className="min-h-screen flex items-center justify-center">

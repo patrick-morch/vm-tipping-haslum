@@ -8,7 +8,7 @@ import { ReactNode } from "react";
 export default function Skall({ children }: { children: ReactNode }) {
   const path = usePathname();
   const router = useRouter();
-  const { bruker, loggUt } = useAuth();
+  const { bruker, loggUt, demoModus } = useAuth();
 
   const initialer = bruker?.navn
     ?.split(" ")
@@ -31,6 +31,11 @@ export default function Skall({ children }: { children: ReactNode }) {
 
   return (
     <div className="min-h-screen flex flex-col">
+      {demoModus && (
+        <div className="bg-warning/10 text-warning text-center text-xs py-1.5 border-b border-warning/20">
+          Demo-modus — data lagres bare i nettleseren
+        </div>
+      )}
       <header className="sticky top-0 z-10 bg-bg/80 backdrop-blur border-b border-border">
         <div className="max-w-[480px] mx-auto px-4 py-3 flex items-center justify-between">
           <Link href="/kamper" className="flex items-center gap-2">

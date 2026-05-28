@@ -1,17 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import {
-  collection,
-  doc,
-  onSnapshot,
-  orderBy,
-  query,
-  setDoc,
-  where,
-} from "firebase/firestore";
-import { fbDb } from "@/lib/firebase";
 import { useAuth } from "@/lib/auth-context";
+import { useKamper, useMineTips, lagreTip } from "@/lib/data";
 import { Match, Prediction } from "@/lib/types";
 import Skall from "@/components/Skall";
 import Beskytt from "@/components/Beskytt";
@@ -28,47 +19,19 @@ export default function KamperSide() {
 
 function Kamper() {
   const { user, bruker } = useAuth();
-  const [kamper, setKamper] = useState<Match[]>([]);
-  const [tips, setTips] = useState<Record<string, Prediction>>({});
-  const [laster, setLaster] = useState(true);
+  const kamper = useKamper();
+  const tips = useMineTips(user?.uid);
 
-  useEffect(() => {
-    if (!user) return;
-    const q = query(collection(fbDb(), "kamper"), orderBy("starttid", "asc"));
-    const unsub = onSnapshot(q, (snap) => {
-      const liste = snap.docs.map((d) => ({ id: d.id, ...d.data() }) as Match);
-      setKamper(liste);
-      setLaster(false);
-    });
-    return () => unsub();
-  }, [user]);
-
-  useEffect(() => {
-    if (!user) return;
-    const q = query(collection(fbDb(), "tips"), where("uid", "==", user.uid));
-    const unsub = onSnapshot(q, (snap) => {
-      const m: Record<string, Prediction> = {};
-      snap.docs.forEach((d) => {
-        const p = d.data() as Prediction;
-        m[p.matchId] = p;
-      });
-      setTips(m);
-    });
-    return () => unsub();
-  }, [user]);
-
-  async function lagreTip(matchId: string, hjemme: number, borte: number) {
+  async function lagre(matchId: string, hjemme: number, borte: number) {
     if (!user || !bruker) return;
-    const tipId = `${user.uid}_${matchId}`;
-    const tip: Prediction = {
+    await lagreTip({
       matchId,
       uid: user.uid,
       navn: bruker.navn,
       hjemme,
       borte,
       lagretTid: Date.now(),
-    };
-    await setDoc(doc(fbDb(), "tips", tipId), tip);
+    });
   }
 
   const nå = Date.now();
@@ -80,20 +43,18 @@ function Kamper() {
       <div>
         <h1 className="text-2xl font-semibold">Kamper</h1>
         <p className="text-muted text-sm">
-          {laster
-            ? "Laster kamper…"
-            : utenTip > 0
-              ? `Du har ${utenTip} kamp${utenTip === 1 ? "" : "er"} igjen å tippe på.`
-              : kommende.length === 0
-                ? "Ingen kommende kamper akkurat nå."
-                : "Alle kommende kamper er tippet. Bra jobba."}
+          {utenTip > 0
+            ? `Du har ${utenTip} kamp${utenTip === 1 ? "" : "er"} igjen å tippe på.`
+            : kommende.length === 0
+              ? "Ingen kommende kamper akkurat nå."
+              : "Alle kommende kamper er tippet. Bra jobba."}
         </p>
       </div>
 
-      {!laster && kamper.length === 0 && (
+      {kamper.length === 0 && (
         <div className="bg-surface border border-border rounded-2xl p-6 text-center">
           <p className="text-muted text-sm">
-            Ingen kamper er lagt inn ennå. Spør admin om å seede kampene.
+            Ingen kamper er lagt inn ennå. Spør admin om å legge til kamper.
           </p>
         </div>
       )}
@@ -105,7 +66,7 @@ function Kamper() {
             kamp={kamp}
             tip={tips[kamp.id]}
             låst={kamp.starttid <= nå}
-            onLagre={(h, b) => lagreTip(kamp.id, h, b)}
+            onLagre={(h, b) => lagre(kamp.id, h, b)}
           />
         ))}
       </div>

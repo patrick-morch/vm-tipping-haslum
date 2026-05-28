@@ -1,18 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import {
-  addDoc,
-  collection,
-  doc,
-  onSnapshot,
-  orderBy,
-  query,
-  updateDoc,
-} from "firebase/firestore";
 import { useRouter } from "next/navigation";
-import { fbDb } from "@/lib/firebase";
 import { useAuth } from "@/lib/auth-context";
+import { useKamper, leggTilKamp, settResultat } from "@/lib/data";
 import { Match } from "@/lib/types";
 import Skall from "@/components/Skall";
 import Beskytt from "@/components/Beskytt";
@@ -30,20 +21,11 @@ export default function AdminSide() {
 function Admin() {
   const { bruker } = useAuth();
   const router = useRouter();
-  const [kamper, setKamper] = useState<Match[]>([]);
+  const kamper = useKamper();
 
   useEffect(() => {
     if (bruker && bruker.rolle !== "admin") router.replace("/kamper");
   }, [bruker, router]);
-
-  useEffect(() => {
-    const unsub = onSnapshot(
-      query(collection(fbDb(), "kamper"), orderBy("starttid", "asc")),
-      (snap) =>
-        setKamper(snap.docs.map((d) => ({ id: d.id, ...d.data() }) as Match)),
-    );
-    return () => unsub();
-  }, []);
 
   const [hjem, setHjem] = useState("");
   const [bort, setBort] = useState("");
@@ -51,14 +33,13 @@ function Admin() {
   const [runde, setRunde] = useState("Gruppespill");
   const [bonus, setBonus] = useState(1);
 
-  async function leggTilKamp(e: React.FormEvent) {
+  async function nyKamp(e: React.FormEvent) {
     e.preventDefault();
     if (!hjem || !bort || !dato) return;
-    const starttid = new Date(dato).getTime();
-    await addDoc(collection(fbDb(), "kamper"), {
+    await leggTilKamp({
       hjemmelag: hjem,
       bortelag: bort,
-      starttid,
+      starttid: new Date(dato).getTime(),
       runde,
       bonusFaktor: bonus,
       resultat: null,
@@ -66,12 +47,6 @@ function Admin() {
     setHjem("");
     setBort("");
     setDato("");
-  }
-
-  async function settResultat(id: string, h: number, b: number) {
-    await updateDoc(doc(fbDb(), "kamper", id), {
-      resultat: { hjemme: h, borte: b },
-    });
   }
 
   if (!bruker || bruker.rolle !== "admin") {
@@ -84,7 +59,7 @@ function Admin() {
 
       <section className="bg-surface border border-border rounded-2xl p-4 space-y-3">
         <h2 className="font-semibold">Legg til kamp</h2>
-        <form onSubmit={leggTilKamp} className="space-y-2">
+        <form onSubmit={nyKamp} className="space-y-2">
           <div className="grid grid-cols-2 gap-2">
             <input
               placeholder="Hjemmelag"

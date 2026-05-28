@@ -1,16 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import {
-  collection,
-  onSnapshot,
-  orderBy,
-  query,
-  where,
-} from "firebase/firestore";
-import { fbDb } from "@/lib/firebase";
 import { useAuth } from "@/lib/auth-context";
-import { Match, Prediction, beregnPoeng } from "@/lib/types";
+import { useKamper, useMineTips } from "@/lib/data";
+import { beregnPoeng } from "@/lib/types";
 import Skall from "@/components/Skall";
 import Beskytt from "@/components/Beskytt";
 
@@ -26,33 +18,8 @@ export default function MineTipsSide() {
 
 function MineTips() {
   const { user } = useAuth();
-  const [kamper, setKamper] = useState<Match[]>([]);
-  const [tips, setTips] = useState<Record<string, Prediction>>({});
-
-  useEffect(() => {
-    const unsub = onSnapshot(
-      query(collection(fbDb(), "kamper"), orderBy("starttid", "asc")),
-      (snap) =>
-        setKamper(snap.docs.map((d) => ({ id: d.id, ...d.data() }) as Match)),
-    );
-    return () => unsub();
-  }, []);
-
-  useEffect(() => {
-    if (!user) return;
-    const unsub = onSnapshot(
-      query(collection(fbDb(), "tips"), where("uid", "==", user.uid)),
-      (snap) => {
-        const m: Record<string, Prediction> = {};
-        snap.docs.forEach((d) => {
-          const p = d.data() as Prediction;
-          m[p.matchId] = p;
-        });
-        setTips(m);
-      },
-    );
-    return () => unsub();
-  }, [user]);
+  const kamper = useKamper();
+  const tips = useMineTips(user?.uid);
 
   const mineKamper = kamper.filter((k) => tips[k.id]);
   const totalPoeng = mineKamper.reduce((sum, k) => {
