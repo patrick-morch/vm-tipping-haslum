@@ -250,6 +250,8 @@ function KnockoutFane() {
         </div>
       </div>
 
+      <BronseSeksjon />
+
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
         <div className="bg-surface border border-border rounded-2xl p-3 text-center text-xs text-muted">
           Kampene fylles automatisk inn etter 27. juni.
@@ -260,6 +262,51 @@ function KnockoutFane() {
         >
           Tipp neste kamper →
         </Link>
+      </div>
+    </div>
+  );
+}
+
+function BronseSeksjon() {
+  const kamper = useKamper();
+  const bronse = kamper.find((k) => k.runde === "Bronsefinale");
+
+  const dato = bronse
+    ? new Date(bronse.starttid).toLocaleDateString("nb-NO", {
+        weekday: "long",
+        day: "2-digit",
+        month: "short",
+      })
+    : "18. juli";
+
+  return (
+    <div className="relative overflow-hidden rounded-2xl border border-warning/30 bg-gradient-to-br from-warning/10 via-warning/5 to-transparent p-4">
+      <div className="absolute -top-8 -right-8 w-32 h-32 rounded-full bg-warning/15 blur-2xl pointer-events-none" />
+      <div className="relative flex items-center gap-4">
+        <div className="text-4xl flex-shrink-0">🥉</div>
+        <div className="min-w-0 flex-1">
+          <div className="text-[10px] uppercase tracking-[0.15em] font-bold text-warning">
+            Bronsefinale
+          </div>
+          <div className="font-semibold text-sm mt-0.5">
+            {bronse ? (
+              <>
+                {flagg(bronse.hjemmelag)} {kortLagNavn(bronse.hjemmelag)} –{" "}
+                {kortLagNavn(bronse.bortelag)} {flagg(bronse.bortelag)}
+              </>
+            ) : (
+              "TBD vs TBD"
+            )}
+          </div>
+          <div className="text-[11px] text-muted mt-0.5">
+            {dato}
+            {bronse?.resultat && (
+              <span className="ml-2 font-bold text-text">
+                {bronse.resultat.hjemme}–{bronse.resultat.borte}
+              </span>
+            )}
+          </div>
+        </div>
       </div>
     </div>
   );
