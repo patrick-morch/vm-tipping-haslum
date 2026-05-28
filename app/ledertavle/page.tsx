@@ -3,7 +3,6 @@
 import { useMemo, useState } from "react";
 import { useAuth } from "@/lib/auth-context";
 import {
-  useAlleGruppeTips,
   useAlleSpesialTips,
   useAlleTips,
   useBrukere,
@@ -11,7 +10,8 @@ import {
   useKamper,
 } from "@/lib/data";
 import { beregnPoeng } from "@/lib/types";
-import { POENG } from "@/lib/vm-data";
+import { beregnTabell } from "@/lib/standings";
+import { GRUPPER, POENG } from "@/lib/vm-data";
 import Skall from "@/components/Skall";
 import Beskytt from "@/components/Beskytt";
 
@@ -41,7 +41,6 @@ function Ledertavle() {
   const brukere = useBrukere();
   const kamper = useKamper();
   const tips = useAlleTips();
-  const gruppeTips = useAlleGruppeTips();
   const spesialTips = useAlleSpesialTips();
   const fasit = useFasit();
   const [avdFilter, setAvdFilter] = useState<string>("alle");
@@ -61,6 +60,8 @@ function Ledertavle() {
         eksakte: 0,
       }),
     );
+
+    // Kamp-poeng (resultater)
     tips.forEach((t) => {
       const rad = map.get(t.uid);
       if (!rad) return;
@@ -70,14 +71,42 @@ function Ledertavle() {
       rad.kampPoeng += p;
       if (p >= 3 * (kamp.bonusFaktor || 1)) rad.eksakte += 1;
     });
-    gruppeTips.forEach((g) => {
-      const rad = map.get(g.uid);
-      if (!rad) return;
-      if (fasit.gruppeVinner[g.gruppe] === g.vinner)
-        rad.gruppePoeng += POENG.gruppeVinner;
-      if (fasit.gruppeToer[g.gruppe] === g.toer)
-        rad.gruppePoeng += POENG.gruppeToer;
-    });
+
+    // Gruppe-poeng: beregn brukerens predikerte tabell og sammenlign med fasit
+    if (Object.keys(fasit.gruppeVinner).length > 0) {
+      const tipsPerUid = new Map<string, Map<string, { hjemme: number; borte: number }>>();
+      tips.forEach((t) => {
+        let m = tipsPerUid.get(t.uid);
+        if (!m) {
+          m = new Map();
+          tipsPerUid.set(t.uid, m);
+        }
+        m.set(t.matchId, { hjemme: t.hjemme, borte: t.borte });
+      });
+      brukere.forEach((b) => {
+        const rad = map.get(b.uid);
+        if (!rad) return;
+        const mineTips = tipsPerUid.get(b.uid) || new Map();
+        GRUPPER.forEach((g) => {
+          const fasitVinner = fasit.gruppeVinner[g.id];
+          const fasitToer = fasit.gruppeToer[g.id];
+          if (!fasitVinner) return;
+          const gruppeKamper = kamper
+            .filter((k) => k.runde === `Gruppe ${g.id}`)
+            .map((k) => ({
+              hjemmelag: k.hjemmelag,
+              bortelag: k.bortelag,
+              resultat: mineTips.get(k.id) ?? null,
+            }));
+          const tabell = beregnTabell(g.lag, gruppeKamper);
+          if (tabell[0]?.lag === fasitVinner) rad.gruppePoeng += POENG.gruppeVinner;
+          if (fasitToer && tabell[1]?.lag === fasitToer)
+            rad.gruppePoeng += POENG.gruppeToer;
+        });
+      });
+    }
+
+    // Spesial-poeng
     spesialTips.forEach((s) => {
       const rad = map.get(s.uid);
       if (!rad) return;
@@ -104,11 +133,12 @@ function Ledertavle() {
       )
         rad.spesialPoeng += POENG.mestRødeKort;
     });
+
     map.forEach((r) => {
       r.poeng = r.kampPoeng + r.gruppePoeng + r.spesialPoeng;
     });
     return Array.from(map.values()).sort((a, b) => b.poeng - a.poeng);
-  }, [brukere, kamper, tips, gruppeTips, spesialTips, fasit]);
+  }, [brukere, kamper, tips, spesialTips, fasit]);
 
   const avdelinger = useMemo(() => {
     const set = new Set<string>();
@@ -127,7 +157,8 @@ function Ledertavle() {
         <h1 className="text-2xl font-semibold">Ledertavle</h1>
         <p className="text-muted text-sm">
           {brukere.length} medlemmer ·{" "}
-          {kamper.filter((k) => k.resultat).length} kamper avgjort
+          {kamper.filter((k) => k.resultat).length}/{kamper.length} kamper
+          avgjort
         </p>
       </div>
 

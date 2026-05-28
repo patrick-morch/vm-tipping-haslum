@@ -21,9 +21,9 @@ export default function Skall({ children }: { children: ReactNode }) {
 
   const nav = [
     { href: "/kamper", tittel: "Kamper", ikon: "⚽" },
-    { href: "/grupper", tittel: "Grupper", ikon: "📊" },
     { href: "/sluttspill", tittel: "Bracket", ikon: "🏆" },
     { href: "/spesial", tittel: "Spesial", ikon: "⭐" },
+    { href: "/mine-tips", tittel: "Mine", ikon: "📋" },
     { href: "/ledertavle", tittel: "Tabell", ikon: "🏅" },
   ];
 

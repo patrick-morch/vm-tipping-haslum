@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useAuth } from "@/lib/auth-context";
 import { useKamper, useMineTips, lagreTip } from "@/lib/data";
@@ -7,6 +8,8 @@ import { Match, Prediction } from "@/lib/types";
 import { erNorgeKamp } from "@/lib/vm-data";
 import Skall from "@/components/Skall";
 import Beskytt from "@/components/Beskytt";
+
+const ANTALL = 5;
 
 export default function KamperSide() {
   return (
@@ -23,54 +26,58 @@ function Kamper() {
   const kamper = useKamper();
   const tips = useMineTips(user?.uid);
 
-  async function lagre(matchId: string, hjemme: number, borte: number) {
+  const nå = Date.now();
+  const neste = kamper
+    .filter((k) => k.starttid > nå)
+    .sort((a, b) => a.starttid - b.starttid)
+    .slice(0, ANTALL);
+  const totalKommende = kamper.filter((k) => k.starttid > nå).length;
+  const utenTip = neste.filter((k) => !tips[k.id]).length;
+
+  async function lagre(id: string, h: number, b: number) {
     if (!user || !bruker) return;
     await lagreTip({
-      matchId,
+      matchId: id,
       uid: user.uid,
       navn: bruker.navn,
-      hjemme,
-      borte,
+      hjemme: h,
+      borte: b,
       lagretTid: Date.now(),
     });
   }
 
-  const nå = Date.now();
-  const kommende = kamper.filter((k) => k.starttid > nå);
-  const utenTip = kommende.filter((k) => !tips[k.id]).length;
-
   return (
     <div className="space-y-4">
       <div>
-        <h1 className="text-2xl font-semibold">Kamper</h1>
+        <h1 className="text-2xl font-semibold">Neste kamper</h1>
         <p className="text-muted text-sm">
           {utenTip > 0
-            ? `Du har ${utenTip} kamp${utenTip === 1 ? "" : "er"} igjen å tippe på.`
-            : kommende.length === 0
+            ? `${utenTip} av de neste ${ANTALL} er ikke tippet ennå.`
+            : neste.length === 0
               ? "Ingen kommende kamper akkurat nå."
-              : "Alle kommende kamper er tippet. Bra jobba."}
+              : "Du har tippet alle de nærmeste kampene."}
         </p>
       </div>
 
-      {kamper.length === 0 && (
-        <div className="bg-surface border border-border rounded-2xl p-6 text-center">
-          <p className="text-muted text-sm">
-            Ingen kamper er lagt inn ennå. Spør admin om å legge til kamper.
-          </p>
-        </div>
-      )}
-
       <div className="space-y-3">
-        {kamper.map((kamp) => (
+        {neste.map((kamp) => (
           <KampKort
             key={kamp.id}
             kamp={kamp}
             tip={tips[kamp.id]}
-            låst={kamp.starttid <= nå}
             onLagre={(h, b) => lagre(kamp.id, h, b)}
           />
         ))}
       </div>
+
+      {totalKommende > ANTALL && (
+        <Link
+          href="/sluttspill"
+          className="block text-center bg-surface border border-border hover:border-primary rounded-2xl py-3 text-sm font-medium transition"
+        >
+          Se alle {totalKommende} kommende kamper i gruppespill →
+        </Link>
+      )}
     </div>
   );
 }
@@ -78,37 +85,32 @@ function Kamper() {
 function KampKort({
   kamp,
   tip,
-  låst,
   onLagre,
 }: {
   kamp: Match;
   tip?: Prediction;
-  låst: boolean;
   onLagre: (h: number, b: number) => Promise<void>;
 }) {
-  const [hjemme, setHjemme] = useState<string>(tip ? String(tip.hjemme) : "");
-  const [borte, setBorte] = useState<string>(tip ? String(tip.borte) : "");
+  const [hjem, setHjem] = useState(tip ? String(tip.hjemme) : "");
+  const [bort, setBort] = useState(tip ? String(tip.borte) : "");
   const [lagrer, setLagrer] = useState(false);
   const [lagret, setLagret] = useState(false);
 
   useEffect(() => {
     if (tip) {
-      setHjemme(String(tip.hjemme));
-      setBorte(String(tip.borte));
+      setHjem(String(tip.hjemme));
+      setBort(String(tip.borte));
     }
   }, [tip]);
 
-  const gyldig =
-    hjemme !== "" &&
-    borte !== "" &&
-    Number(hjemme) >= 0 &&
-    Number(borte) >= 0;
+  const gyldig = hjem !== "" && bort !== "" && Number(hjem) >= 0 && Number(bort) >= 0;
+  const erNorge = erNorgeKamp(kamp);
 
   async function lagre() {
-    if (!gyldig || låst) return;
+    if (!gyldig) return;
     setLagrer(true);
     try {
-      await onLagre(Number(hjemme), Number(borte));
+      await onLagre(Number(hjem), Number(bort));
       setLagret(true);
       setTimeout(() => setLagret(false), 1500);
     } finally {
@@ -130,9 +132,7 @@ function KampKort({
   return (
     <div
       className={`bg-surface border rounded-2xl p-4 ${
-        erNorgeKamp(kamp)
-          ? "border-norge/40 shadow-[0_0_0_1px_rgb(var(--norge)/0.15)]"
-          : "border-border"
+        erNorge ? "border-norge/40" : "border-border"
       }`}
     >
       <div className="flex items-center justify-between text-xs text-muted mb-3">
@@ -154,9 +154,9 @@ function KampKort({
           <div className="font-semibold">{kamp.hjemmelag}</div>
         </div>
         <div className="flex items-center gap-2">
-          <ScoreInput verdi={hjemme} onChange={setHjemme} låst={låst} />
+          <Sc verdi={hjem} onChange={setHjem} />
           <span className="text-muted">–</span>
-          <ScoreInput verdi={borte} onChange={setBorte} låst={låst} />
+          <Sc verdi={bort} onChange={setBort} />
         </div>
         <div className="text-left">
           <div className="font-semibold">{kamp.bortelag}</div>
@@ -165,49 +165,30 @@ function KampKort({
 
       <div className="mt-3 flex items-center justify-between">
         <div className="text-xs text-muted">
-          {låst ? (
-            kamp.resultat ? (
-              <span>
-                Resultat:{" "}
-                <span className="text-text font-semibold">
-                  {kamp.resultat.hjemme}–{kamp.resultat.borte}
-                </span>
-              </span>
-            ) : (
-              "Tipping låst — kampen er i gang"
-            )
-          ) : tip ? (
-            "Tipset er lagret. Du kan endre frem til kampstart."
-          ) : (
-            "Velg resultat og lagre"
-          )}
+          {tip ? "Tipset er lagret" : "Velg resultat og lagre"}
         </div>
-        {!låst && (
-          <button
-            onClick={lagre}
-            disabled={!gyldig || lagrer}
-            className={`h-9 px-4 rounded-xl text-sm font-medium transition active:scale-[0.98] ${
-              lagret
-                ? "bg-primary text-bg"
-                : "bg-elevated border border-border hover:border-primary disabled:opacity-50"
-            }`}
-          >
-            {lagret ? "Lagret" : lagrer ? "Lagrer…" : tip ? "Oppdater" : "Lagre"}
-          </button>
-        )}
+        <button
+          onClick={lagre}
+          disabled={!gyldig || lagrer}
+          className={`h-9 px-4 rounded-xl text-sm font-medium transition active:scale-[0.98] ${
+            lagret
+              ? "bg-success text-white"
+              : "bg-primary text-primaryFg hover:bg-primaryDark disabled:opacity-40"
+          }`}
+        >
+          {lagret ? "Lagret" : lagrer ? "Lagrer…" : tip ? "Oppdater" : "Lagre"}
+        </button>
       </div>
     </div>
   );
 }
 
-function ScoreInput({
+function Sc({
   verdi,
   onChange,
-  låst,
 }: {
   verdi: string;
   onChange: (v: string) => void;
-  låst: boolean;
 }) {
   return (
     <input
@@ -215,12 +196,11 @@ function ScoreInput({
       inputMode="numeric"
       min={0}
       max={20}
-      disabled={låst}
       value={verdi}
       onChange={(e) =>
         onChange(e.target.value.replace(/[^0-9]/g, "").slice(0, 2))
       }
-      className="w-14 h-12 text-center text-xl font-bold rounded-xl bg-elevated border border-border focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 disabled:opacity-60"
+      className="w-14 h-12 text-center text-xl font-bold rounded-xl bg-elevated border border-border focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
     />
   );
 }

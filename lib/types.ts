@@ -27,14 +27,6 @@ export type Bruker = {
   opprettet: number;
 };
 
-export type GruppeTip = {
-  uid: string;
-  gruppe: string; // "A", "B", ..., "L"
-  vinner: string;
-  toer: string;
-  lagretTid: number;
-};
-
 export type SpesialTip = {
   uid: string;
   vmVinner: string;

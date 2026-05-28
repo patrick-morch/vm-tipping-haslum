@@ -3,12 +3,11 @@
 import {
   Bruker,
   Fasit,
-  GruppeTip,
   Match,
   Prediction,
   SpesialTip,
 } from "./types";
-import { NORGE_KAMPER, ANDRE_DEMOKAMPER } from "./vm-data";
+import { alleGruppekamper } from "./vm-data";
 
 type Listener<T> = (val: T) => void;
 
@@ -57,15 +56,11 @@ class Store<T> {
   }
 }
 
-const SEED_VERSJON = 2;
+const SEED_VERSJON = 3;
 
 export const localBrukere = new Store<Record<string, Bruker>>("vmt.brukere", {});
 export const localKamper = new Store<Match[]>("vmt.kamper", []);
 export const localTips = new Store<Record<string, Prediction>>("vmt.tips", {});
-export const localGruppeTips = new Store<Record<string, GruppeTip>>(
-  "vmt.gruppetips",
-  {},
-);
 export const localSpesialTips = new Store<Record<string, SpesialTip>>(
   "vmt.spesialtips",
   {},
@@ -89,10 +84,10 @@ export function seedDemo() {
   if (typeof window === "undefined") return;
   const versjon = Number(localStorage.getItem("vmt.seed") || "0");
   if (versjon >= SEED_VERSJON) return;
-  const alle = [...NORGE_KAMPER, ...ANDRE_DEMOKAMPER].map((k, i) => ({
-    ...k,
-    id: `vm-${i + 1}`,
-  }));
-  localKamper.set(alle);
+  // Ny seed: erstatt kamper, slett gamle tipps (ID-er har endret seg)
+  localKamper.set(alleGruppekamper());
+  localTips.set({});
+  // gamle "vmt.gruppetips" er ikke lengre i bruk
+  localStorage.removeItem("vmt.gruppetips");
   localStorage.setItem("vmt.seed", String(SEED_VERSJON));
 }
