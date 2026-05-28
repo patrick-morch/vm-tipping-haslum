@@ -39,6 +39,13 @@ function Kamper() {
     return () => clearInterval(t);
   }, []);
 
+  useEffect(() => {
+    document.body.dataset.page = "kamper";
+    return () => {
+      delete document.body.dataset.page;
+    };
+  }, []);
+
   const åpne = kamper
     .filter((k) => k.starttid - LÅS_FØR_KAMP_MS > nå && erTippbar(k))
     .sort((a, b) => a.starttid - b.starttid);
