@@ -77,53 +77,168 @@ function SyncSeksjon() {
 }
 
 function SeedSeksjon({ kamper }: { kamper: Match[] }) {
-  const [laster, setLaster] = useState(false);
-  const [klart, setKlart] = useState(false);
+  const [åpen, setÅpen] = useState(false);
   const tilstede = kamper.length;
   const trenger = 72;
+  const harResultater = kamper.filter((k) => k.resultat).length;
   const ferdig = tilstede >= trenger;
+  const trengerSeed = !ferdig;
 
-  async function seed() {
-    if (!confirm("Skriv alle 72 VM-kamper til databasen?")) return;
+  return (
+    <section
+      className={`border rounded-2xl p-4 ${
+        trengerSeed
+          ? "bg-warning/5 border-warning/30"
+          : "bg-success/5 border-success/30"
+      }`}
+    >
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0 flex-1">
+          <h2 className="font-semibold flex items-center gap-2">
+            {trengerSeed ? "⚠" : "✓"} VM-kamper i databasen
+          </h2>
+          <p className="text-xs text-muted mt-0.5">
+            {tilstede}/{trenger} kamper · {harResultater} har resultat fra
+            sync.
+          </p>
+          {!trengerSeed && (
+            <p className="text-[11px] text-muted mt-1.5">
+              Kampene styres normalt av auto-sync. Bare bruk knappen hvis du
+              må tilbakestille til ren tilstand.
+            </p>
+          )}
+        </div>
+        {trengerSeed ? (
+          <button
+            onClick={() => setÅpen(true)}
+            className="h-10 px-4 rounded-xl bg-primary text-primaryFg text-sm font-semibold hover:bg-primaryDark whitespace-nowrap"
+          >
+            Seed VM-kamper
+          </button>
+        ) : (
+          <button
+            onClick={() => setÅpen(true)}
+            className="h-10 px-4 rounded-xl bg-danger/10 border border-danger/30 text-danger text-sm font-semibold hover:bg-danger/15 whitespace-nowrap"
+          >
+            Tilbakestill
+          </button>
+        )}
+      </div>
+
+      {åpen && (
+        <TilbakestillModal
+          harResultater={harResultater}
+          onAvbryt={() => setÅpen(false)}
+        />
+      )}
+    </section>
+  );
+}
+
+function TilbakestillModal({
+  harResultater,
+  onAvbryt,
+}: {
+  harResultater: number;
+  onAvbryt: () => void;
+}) {
+  const [bekreft, setBekreft] = useState("");
+  const [laster, setLaster] = useState(false);
+  const [feil, setFeil] = useState<string | null>(null);
+  const KODEORD = "TILBAKESTILL";
+  const kanKjøre = bekreft.trim() === KODEORD;
+
+  async function utfør() {
+    if (!kanKjøre) return;
     setLaster(true);
+    setFeil(null);
     try {
       await seedAlleKamper();
-      setKlart(true);
-      setTimeout(() => setKlart(false), 2000);
-    } finally {
+      onAvbryt();
+    } catch (e: any) {
+      setFeil(e?.message || "Tilbakestilling feilet.");
       setLaster(false);
     }
   }
 
   return (
-    <section
-      className={`border rounded-2xl p-4 ${
-        ferdig
-          ? "bg-success/5 border-success/30"
-          : "bg-warning/5 border-warning/30"
-      }`}
+    <div
+      className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center px-4"
+      onClick={onAvbryt}
     >
-      <div className="flex items-center justify-between gap-3">
-        <div className="min-w-0">
-          <h2 className="font-semibold flex items-center gap-2">
-            {ferdig ? "✓" : "⚠"} VM-kamper i databasen
-          </h2>
-          <p className="text-xs text-muted mt-0.5">
-            {tilstede}/{trenger} kamper.{" "}
-            {ferdig
-              ? "Alt er på plass. Du kan kjøre seed igjen for å overskrive."
-              : "Trykk på knappen for å legge til alle 72 gruppekamper."}
+      <div
+        className="bg-surface border border-border rounded-2xl p-5 w-full max-w-sm space-y-4"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div>
+          <div className="text-3xl mb-2">⚠️</div>
+          <h3 className="text-lg font-semibold">Tilbakestill alle kamper?</h3>
+          <p className="text-sm text-muted mt-1">
+            Alle 72 kampene skrives på nytt med ren tilstand. Dato, klokkeslett
+            og lag tilbakestilles til den hardkodede VM 2026-tabellen.
           </p>
         </div>
-        <button
-          onClick={seed}
-          disabled={laster}
-          className="h-10 px-4 rounded-xl bg-primary text-primaryFg text-sm font-semibold hover:bg-primaryDark disabled:opacity-50 whitespace-nowrap"
-        >
-          {laster ? "Skriver…" : klart ? "✓ Ferdig" : "Seed VM-kamper"}
-        </button>
+
+        <div className="bg-danger/10 border border-danger/30 rounded-xl p-3 text-sm space-y-2">
+          <div className="text-danger font-semibold">Dette overskrives:</div>
+          <ul className="text-xs text-muted space-y-0.5 ml-4 list-disc">
+            <li>
+              {harResultater > 0 ? (
+                <>
+                  <span className="text-danger font-semibold">
+                    {harResultater} kampresultat
+                  </span>{" "}
+                  blir slettet
+                </>
+              ) : (
+                "Ingen resultater er satt — de blir uansett satt til tomt"
+              )}
+            </li>
+            <li>Eventuelle manuelle datojusteringer går tapt</li>
+            <li>Auto-sync vil legge inn resultater på nytt etterhvert</li>
+          </ul>
+        </div>
+
+        <div>
+          <label className="block text-xs text-muted mb-1.5">
+            Skriv{" "}
+            <span className="text-text font-bold tracking-wide">{KODEORD}</span>{" "}
+            for å bekrefte:
+          </label>
+          <input
+            type="text"
+            value={bekreft}
+            onChange={(e) => setBekreft(e.target.value)}
+            autoFocus
+            placeholder={KODEORD}
+            className="w-full h-11 px-3 rounded-xl bg-elevated border border-border focus:border-danger focus:outline-none focus:ring-2 focus:ring-danger/20 font-mono tracking-wide"
+          />
+        </div>
+
+        {feil && (
+          <div className="text-sm text-danger bg-danger/10 border border-danger/30 rounded-xl px-3 py-2">
+            {feil}
+          </div>
+        )}
+
+        <div className="flex gap-2">
+          <button
+            onClick={onAvbryt}
+            disabled={laster}
+            className="flex-1 h-11 rounded-xl border border-border bg-elevated text-sm font-semibold hover:border-primary transition disabled:opacity-50"
+          >
+            Avbryt
+          </button>
+          <button
+            onClick={utfør}
+            disabled={!kanKjøre || laster}
+            className="flex-1 h-11 rounded-xl bg-danger text-white text-sm font-semibold hover:bg-danger/90 transition disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            {laster ? "Tilbakestiller…" : "Tilbakestill permanent"}
+          </button>
+        </div>
       </div>
-    </section>
+    </div>
   );
 }
 
