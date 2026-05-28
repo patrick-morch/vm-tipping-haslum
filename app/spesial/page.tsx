@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useAuth } from "@/lib/auth-context";
 import { lagreSpesialTip, useMittSpesialTip } from "@/lib/data";
 import { GRUPPER, POENG } from "@/lib/vm-data";
@@ -27,41 +27,85 @@ function Spesial() {
   const [toppscorer, setToppscorer] = useState("");
   const [toppassist, setToppassist] = useState("");
   const [mestRødeKort, setMestRødeKort] = useState("");
-  const [klart, setKlart] = useState(false);
+  const [status, setStatus] = useState<"idle" | "lagrer" | "lagret">("idle");
+  const klar = useRef(false);
 
   useEffect(() => {
-    if (lagret) {
-      setVmVinner(lagret.vmVinner);
-      setVmFinalist(lagret.vmFinalist);
-      setToppscorer(lagret.toppscorer);
-      setToppassist(lagret.toppassist);
-      setMestRødeKort(lagret.mestRødeKort);
+    if (!lagret) {
+      klar.current = true;
+      return;
     }
+    setVmVinner(lagret.vmVinner);
+    setVmFinalist(lagret.vmFinalist);
+    setToppscorer(lagret.toppscorer);
+    setToppassist(lagret.toppassist);
+    setMestRødeKort(lagret.mestRødeKort);
+    klar.current = true;
   }, [lagret]);
 
-  async function lagre() {
-    if (!user) return;
-    await lagreSpesialTip({
-      uid: user.uid,
-      vmVinner,
-      vmFinalist,
-      toppscorer,
-      toppassist,
-      mestRødeKort,
-      lagretTid: Date.now(),
-    });
-    setKlart(true);
-    setTimeout(() => setKlart(false), 1500);
-  }
+  useEffect(() => {
+    if (!user || !klar.current) return;
+    // Hopp over hvis ingenting er endret
+    if (
+      lagret &&
+      lagret.vmVinner === vmVinner &&
+      lagret.vmFinalist === vmFinalist &&
+      lagret.toppscorer === toppscorer &&
+      lagret.toppassist === toppassist &&
+      lagret.mestRødeKort === mestRødeKort
+    )
+      return;
+    if (
+      !lagret &&
+      !vmVinner &&
+      !vmFinalist &&
+      !toppscorer &&
+      !toppassist &&
+      !mestRødeKort
+    )
+      return;
+    const t = setTimeout(async () => {
+      setStatus("lagrer");
+      await lagreSpesialTip({
+        uid: user.uid,
+        vmVinner,
+        vmFinalist,
+        toppscorer,
+        toppassist,
+        mestRødeKort,
+        lagretTid: Date.now(),
+      });
+      setStatus("lagret");
+      setTimeout(() => setStatus("idle"), 1500);
+    }, 600);
+    return () => clearTimeout(t);
+  }, [
+    vmVinner,
+    vmFinalist,
+    toppscorer,
+    toppassist,
+    mestRødeKort,
+    user,
+    lagret,
+  ]);
 
   return (
     <div className="space-y-4">
-      <div>
-        <h1 className="text-2xl font-semibold">Spesialtips</h1>
-        <p className="text-muted text-sm">
-          De store sjansene for ekstra poeng. Tippene kan endres frem til VM
-          starter.
-        </p>
+      <div className="flex items-end justify-between">
+        <div>
+          <h1 className="text-2xl font-semibold">Spesialtips</h1>
+          <p className="text-muted text-sm">
+            Lagres automatisk. Kan endres frem til VM starter.
+          </p>
+        </div>
+        <div className="h-5">
+          {status === "lagrer" && (
+            <span className="text-xs text-muted">Lagrer…</span>
+          )}
+          {status === "lagret" && (
+            <span className="text-xs text-success font-semibold">✓ Lagret</span>
+          )}
+        </div>
       </div>
 
       <Boks
@@ -124,17 +168,6 @@ function Spesial() {
           placeholder="Spillernavn"
         />
       </Boks>
-
-      <button
-        onClick={lagre}
-        className={`w-full h-12 rounded-2xl font-semibold transition active:scale-[0.99] ${
-          klart
-            ? "bg-success text-white"
-            : "bg-primary text-primaryFg hover:bg-primaryDark"
-        }`}
-      >
-        {klart ? "Lagret" : lagret ? "Oppdater spesialtips" : "Lagre spesialtips"}
-      </button>
     </div>
   );
 }

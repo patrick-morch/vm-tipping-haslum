@@ -181,18 +181,24 @@ function KampRad({
   const låst = kamp.starttid <= Date.now();
   const gyldig = hjem !== "" && bort !== "" && Number(hjem) >= 0 && Number(bort) >= 0;
   const erNorge = erNorgeKamp(kamp);
+  const uendret =
+    tip && Number(hjem) === tip.hjemme && Number(bort) === tip.borte;
 
-  async function lagre() {
-    if (!gyldig || låst) return;
-    setLagrer(true);
-    try {
-      await onLagre(Number(hjem), Number(bort));
-      setLagret(true);
-      setTimeout(() => setLagret(false), 1500);
-    } finally {
-      setLagrer(false);
-    }
-  }
+  useEffect(() => {
+    if (låst || !gyldig || uendret) return;
+    const t = setTimeout(async () => {
+      setLagrer(true);
+      try {
+        await onLagre(Number(hjem), Number(bort));
+        setLagret(true);
+        setTimeout(() => setLagret(false), 1500);
+      } finally {
+        setLagrer(false);
+      }
+    }, 500);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hjem, bort, gyldig, uendret, låst]);
 
   const dato = new Date(kamp.starttid);
   const datoStr = dato.toLocaleDateString("nb-NO", {
@@ -241,22 +247,19 @@ function KampRad({
           {kamp.bortelag}
         </div>
       </div>
-      <div className="mt-2 flex items-center justify-between">
-        <span className="text-[10px] text-muted">
-          {låst ? "Låst" : tip ? "Tippet" : ""}
-        </span>
-        {!låst && (
-          <button
-            onClick={lagre}
-            disabled={!gyldig || lagrer}
-            className={`h-8 px-3 rounded-lg text-xs font-semibold transition ${
-              lagret
-                ? "bg-success text-white"
-                : "bg-primary text-primaryFg hover:bg-primaryDark disabled:opacity-40"
-            }`}
-          >
-            {lagret ? "Lagret" : lagrer ? "Lagrer…" : tip ? "Oppdater" : "Lagre"}
-          </button>
+      <div className="mt-2 flex items-center justify-end h-4">
+        {låst ? (
+          <span className="text-[10px] text-muted">Låst</span>
+        ) : lagrer ? (
+          <span className="text-[10px] text-muted">Lagrer…</span>
+        ) : lagret ? (
+          <span className="text-[10px] text-success font-semibold">
+            ✓ Lagret
+          </span>
+        ) : tip ? (
+          <span className="text-[10px] text-muted">Tippet</span>
+        ) : (
+          <span className="text-[10px] text-muted">Skriv resultat</span>
         )}
       </div>
     </div>

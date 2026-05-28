@@ -105,18 +105,24 @@ function KampKort({
 
   const gyldig = hjem !== "" && bort !== "" && Number(hjem) >= 0 && Number(bort) >= 0;
   const erNorge = erNorgeKamp(kamp);
+  const uendret =
+    tip && Number(hjem) === tip.hjemme && Number(bort) === tip.borte;
 
-  async function lagre() {
-    if (!gyldig) return;
-    setLagrer(true);
-    try {
-      await onLagre(Number(hjem), Number(bort));
-      setLagret(true);
-      setTimeout(() => setLagret(false), 1500);
-    } finally {
-      setLagrer(false);
-    }
-  }
+  useEffect(() => {
+    if (!gyldig || uendret) return;
+    const t = setTimeout(async () => {
+      setLagrer(true);
+      try {
+        await onLagre(Number(hjem), Number(bort));
+        setLagret(true);
+        setTimeout(() => setLagret(false), 1500);
+      } finally {
+        setLagrer(false);
+      }
+    }, 500);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hjem, bort, gyldig, uendret]);
 
   const dato = new Date(kamp.starttid);
   const datoStr = dato.toLocaleDateString("nb-NO", {
@@ -163,24 +169,33 @@ function KampKort({
         </div>
       </div>
 
-      <div className="mt-3 flex items-center justify-between">
-        <div className="text-xs text-muted">
-          {tip ? "Tipset er lagret" : "Velg resultat og lagre"}
-        </div>
-        <button
-          onClick={lagre}
-          disabled={!gyldig || lagrer}
-          className={`h-9 px-4 rounded-xl text-sm font-medium transition active:scale-[0.98] ${
-            lagret
-              ? "bg-success text-white"
-              : "bg-primary text-primaryFg hover:bg-primaryDark disabled:opacity-40"
-          }`}
-        >
-          {lagret ? "Lagret" : lagrer ? "Lagrer…" : tip ? "Oppdater" : "Lagre"}
-        </button>
+      <div className="mt-3 flex items-center justify-end h-5">
+        <Status lagrer={lagrer} lagret={lagret} tippet={Boolean(tip)} />
       </div>
     </div>
   );
+}
+
+function Status({
+  lagrer,
+  lagret,
+  tippet,
+}: {
+  lagrer: boolean;
+  lagret: boolean;
+  tippet: boolean;
+}) {
+  if (lagrer)
+    return <span className="text-xs text-muted">Lagrer…</span>;
+  if (lagret)
+    return (
+      <span className="text-xs text-success font-semibold flex items-center gap-1">
+        ✓ Lagret
+      </span>
+    );
+  if (tippet)
+    return <span className="text-xs text-muted">Tippet</span>;
+  return <span className="text-xs text-muted">Skriv resultat</span>;
 }
 
 function Sc({
