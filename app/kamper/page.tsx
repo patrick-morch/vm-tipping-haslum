@@ -70,17 +70,31 @@ function Kamper() {
   // Grupperer kamper etter dag
   const grupperte = grupperEtterDag(neste, nå);
 
+  const førsteKamp = neste[0];
+  const nedTekst = førsteKamp ? formatTid(førsteKamp.starttid - nå) : null;
+
   return (
     <div className="space-y-5">
       <SideHeader
         tittel="Neste kamper"
         undertittel={
-          neste.length === 0
-            ? "Ingen åpne kamper"
-            : `${neste.length} kommende · ${utenTip} ikke tippet`
+          neste.length === 0 ? (
+            "Ingen åpne kamper"
+          ) : (
+            <>
+              {nedTekst && (
+                <>
+                  <span className="text-text font-semibold">
+                    Neste om {nedTekst}
+                  </span>{" "}
+                  ·{" "}
+                </>
+              )}
+              {utenTip} ikke tippet
+            </>
+          )
         }
       />
-      {neste[0] && <Countdown kamp={neste[0]} nå={nå} utenTip={utenTip} />}
 
       {neste.length === 0 && (
         <div className="bg-surface border border-border rounded-2xl p-8 text-center text-muted text-sm">
@@ -188,76 +202,15 @@ function DatoHeader({ dato, nå }: { dato: string; nå: number }) {
   );
 }
 
-function Countdown({
-  kamp,
-  nå,
-  utenTip,
-}: {
-  kamp: Match;
-  nå: number;
-  utenTip: number;
-}) {
-  const ms = kamp.starttid - nå;
+function formatTid(ms: number): string {
+  if (ms <= 0) return "0 min";
   const totalMin = Math.floor(ms / 60_000);
   const dager = Math.floor(totalMin / (60 * 24));
   const timer = Math.floor((totalMin % (60 * 24)) / 60);
   const min = totalMin % 60;
-
-  let tekst = "";
-  if (dager > 0) tekst = `${dager}d ${timer}t`;
-  else if (timer > 0) tekst = `${timer}t ${min}m`;
-  else tekst = `${min} min`;
-
-  const erNorge = erNorgeKamp(kamp);
-
-  return (
-    <div
-      className={`relative overflow-hidden rounded-3xl border p-4 ${
-        erNorge
-          ? "border-norge/40 bg-gradient-to-br from-norge/15 via-norge/5 to-transparent"
-          : "border-primary/30 bg-gradient-to-br from-primary/15 via-primary/5 to-transparent"
-      }`}
-    >
-      {/* Watermark Haslum-logo bak innholdet */}
-      <img
-        src="/haslum-logo.jpeg"
-        alt=""
-        aria-hidden
-        className="absolute -right-6 top-1/2 -translate-y-1/2 w-40 h-40 object-contain opacity-[0.06] pointer-events-none"
-      />
-      <div className="relative flex items-start justify-between gap-3">
-        <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-1.5 mb-0.5">
-            <img
-              src="/haslum-logo.jpeg"
-              alt="Haslum IL"
-              className="w-5 h-5 object-contain"
-            />
-            <span
-              className={`text-[10px] uppercase tracking-[0.15em] font-bold ${
-                erNorge ? "text-norge" : "text-primary"
-              }`}
-            >
-              Neste kamp om
-            </span>
-          </div>
-          <div className="text-2xl font-bold leading-tight">{tekst}</div>
-          <div className="text-[11px] text-muted mt-1.5 truncate">
-            {flagg(kamp.hjemmelag)} {kortLagNavn(kamp.hjemmelag)} – {kortLagNavn(kamp.bortelag)}{" "}
-            {flagg(kamp.bortelag)}
-          </div>
-        </div>
-        {utenTip > 0 && (
-          <div className="text-right">
-            <div className="text-2xl font-bold leading-none">{utenTip}</div>
-            <div className="text-[9px] text-muted uppercase tracking-wider mt-1">
-              ikke tippet
-            </div>
-          </div>
-        )}
-      </div>
-    </div>
-  );
+  if (dager > 0) return `${dager}d ${timer}t`;
+  if (timer > 0) return `${timer}t ${min}m`;
+  return `${min} min`;
 }
 
 function KampKort({
