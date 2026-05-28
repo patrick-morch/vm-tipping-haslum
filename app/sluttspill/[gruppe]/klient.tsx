@@ -114,11 +114,13 @@ function GruppeDetalj() {
           >
             <span
               className={`font-bold text-xs ${
-                s.posisjon <= 2
-                  ? "text-primary"
-                  : s.posisjon === 3
+                s.posisjon === 1
+                  ? "text-success"
+                  : s.posisjon === 2
                     ? "text-accent"
-                    : "text-muted"
+                    : s.posisjon === 3
+                      ? "text-muted"
+                      : "text-text/40"
               }`}
             >
               {s.posisjon}
@@ -140,9 +142,10 @@ function GruppeDetalj() {
       </div>
 
       <div className="text-xs text-muted px-1">
-        <span className="text-primary font-semibold">1–2</span> går direkte
-        videre · <span className="text-accent font-semibold">3</span> har sjanse
-        som beste treer
+        <span className="text-success font-semibold">1</span> og{" "}
+        <span className="text-accent font-semibold">2</span> går direkte videre ·{" "}
+        <span className="text-muted font-semibold">3</span> har sjanse som beste
+        treer
       </div>
 
       <div className="space-y-3">

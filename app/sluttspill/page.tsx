@@ -113,11 +113,13 @@ function GrupperFane() {
                   <div className="flex items-center gap-2 min-w-0">
                     <span
                       className={`w-4 text-right font-bold ${
-                        s.posisjon <= 2
-                          ? "text-primary"
-                          : s.posisjon === 3
+                        s.posisjon === 1
+                          ? "text-success"
+                          : s.posisjon === 2
                             ? "text-accent"
-                            : "text-muted"
+                            : s.posisjon === 3
+                              ? "text-muted"
+                              : "text-text/40"
                       }`}
                     >
                       {s.posisjon}
@@ -140,56 +142,75 @@ function GrupperFane() {
 
 function KnockoutFane() {
   // 2026: 32 lag i sluttspill (top 2 + 8 beste 3.-plass)
+  // Layout: 16 kamp-spor i runde 1. Hver påfølgende runde dobler antall
+  // grid-rader per kamp så pairs aligner perfekt.
+  const SPOR = 16;
+  const RAD_PX = 52;
+
   const runder = [
-    { id: "32del", navn: "32-dels", kamper: 16 },
-    { id: "16del", navn: "16-dels", kamper: 8 },
-    { id: "kvart", navn: "Kvart", kamper: 4 },
-    { id: "semi", navn: "Semi", kamper: 2 },
-    { id: "finale", navn: "Finale", kamper: 1 },
+    { id: "32del", navn: "Sekstendedels", kort: "Sekstendedels", kamper: 16 },
+    { id: "16del", navn: "Åttendedels", kort: "Åttendedels", kamper: 8 },
+    { id: "kvart", navn: "Kvartfinale", kort: "Kvart", kamper: 4 },
+    { id: "semi", navn: "Semifinale", kort: "Semi", kamper: 2 },
+    { id: "finale", navn: "Finale", kort: "Finale", kamper: 1 },
   ];
 
   return (
     <div className="space-y-3">
-      <div className="bg-surface border border-border rounded-2xl p-3">
-        <div className="flex gap-3 overflow-x-auto pb-2">
-          {runder.map((r, i) => {
-            const total = runder[0].kamper;
-            const gap = (total / r.kamper) * 24 - 24;
+      <div className="bg-surface border border-border rounded-2xl p-3 overflow-x-auto">
+        <div className="flex gap-2.5 min-w-max">
+          {runder.map((r) => {
+            const radPerKamp = SPOR / r.kamper;
             return (
-              <div key={r.id} className="flex-shrink-0 w-[150px]">
-                <div className="text-[10px] font-bold text-muted mb-2 text-center uppercase tracking-wider">
-                  {r.navn}
+              <div key={r.id} className="flex-shrink-0 w-[148px]">
+                <div className="text-[10px] font-bold text-muted mb-3 text-center uppercase tracking-[0.08em]">
+                  {r.kort}
                 </div>
                 <div
-                  className="flex flex-col"
+                  className="grid"
                   style={{
-                    paddingTop: gap / 2,
-                    gap,
+                    gridTemplateRows: `repeat(${SPOR}, ${RAD_PX}px)`,
                   }}
                 >
-                  {Array.from({ length: r.kamper }).map((_, j) => (
-                    <BracketPar key={j} />
+                  {Array.from({ length: r.kamper }).map((_, i) => (
+                    <div
+                      key={i}
+                      style={{
+                        gridRow: `${i * radPerKamp + 1} / span ${radPerKamp}`,
+                      }}
+                      className="flex items-center px-1"
+                    >
+                      <KampKort />
+                    </div>
                   ))}
                 </div>
               </div>
             );
           })}
-          <div className="flex-shrink-0 w-[140px]">
-            <div className="text-[10px] font-bold text-muted mb-2 text-center uppercase tracking-wider">
-              Vinner
+          <div className="flex-shrink-0 w-[160px]">
+            <div className="text-[10px] font-bold text-gold mb-3 text-center uppercase tracking-[0.08em]">
+              Verdensmester
             </div>
-            <div className="bg-gradient-to-br from-gold/20 to-gold/5 border border-gold/40 rounded-xl p-4 text-center mt-[50%]">
-              <div className="text-2xl mb-1">🏆</div>
-              <div className="text-xs text-muted">TBD</div>
+            <div
+              className="grid"
+              style={{
+                gridTemplateRows: `repeat(${SPOR}, ${RAD_PX}px)`,
+              }}
+            >
+              <div
+                style={{ gridRow: `1 / span ${SPOR}` }}
+                className="flex items-center px-1"
+              >
+                <VinnerKort />
+              </div>
             </div>
           </div>
         </div>
       </div>
-      <div className="bg-surface border border-border rounded-2xl p-4 text-center text-sm text-muted">
-        Knockout-runder fylles inn etter gruppespillet (27. juni). Tipp
-        VM-vinner allerede nå under{" "}
+      <div className="bg-surface border border-border rounded-2xl p-3 text-center text-xs text-muted">
+        Lagene fylles inn automatisk når gruppespillet er ferdig 27. juni.{" "}
         <Link href="/spesial" className="text-primary font-semibold">
-          Spesial
+          Tipp VM-vinner her
         </Link>
         .
       </div>
@@ -197,12 +218,35 @@ function KnockoutFane() {
   );
 }
 
-function BracketPar() {
+function KampKort() {
   return (
-    <div className="bg-elevated border border-border rounded-xl p-2 text-xs">
-      <div className="truncate text-muted">TBD</div>
-      <div className="border-t border-border my-1" />
-      <div className="truncate text-muted">TBD</div>
+    <div className="w-full bg-elevated border border-border rounded-lg overflow-hidden shadow-sm">
+      <div className="flex items-center justify-between px-2.5 py-1.5 border-b border-border/60">
+        <div className="flex items-center gap-1.5 min-w-0">
+          <div className="w-2.5 h-2.5 rounded-full bg-border flex-shrink-0" />
+          <span className="text-[11px] text-muted truncate">TBD</span>
+        </div>
+        <span className="text-[11px] text-muted font-mono tabular-nums">–</span>
+      </div>
+      <div className="flex items-center justify-between px-2.5 py-1.5">
+        <div className="flex items-center gap-1.5 min-w-0">
+          <div className="w-2.5 h-2.5 rounded-full bg-border flex-shrink-0" />
+          <span className="text-[11px] text-muted truncate">TBD</span>
+        </div>
+        <span className="text-[11px] text-muted font-mono tabular-nums">–</span>
+      </div>
+    </div>
+  );
+}
+
+function VinnerKort() {
+  return (
+    <div className="w-full bg-gradient-to-br from-gold/25 via-gold/10 to-transparent border border-gold/50 rounded-xl p-3 text-center shadow-[0_0_0_1px_rgb(var(--gold)/0.1)]">
+      <div className="text-3xl mb-1.5">🏆</div>
+      <div className="text-[9px] text-gold uppercase tracking-[0.1em] mb-0.5 font-bold">
+        Champion
+      </div>
+      <div className="text-sm font-bold text-text/70">TBD</div>
     </div>
   );
 }

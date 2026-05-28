@@ -12,6 +12,7 @@ export default function LoggInn() {
   const [modus, setModus] = useState<Modus>("logg-inn");
   const [epost, setEpost] = useState("");
   const [passord, setPassord] = useState("");
+  const [bekreft, setBekreft] = useState("");
   const [navn, setNavn] = useState("");
   const [avdeling, setAvdeling] = useState("");
   const [feil, setFeil] = useState<string | null>(null);
@@ -30,6 +31,9 @@ export default function LoggInn() {
       } else if (modus === "registrer") {
         if (passord.length < 8) {
           throw new Error("Passord må være minst 8 tegn.");
+        }
+        if (passord !== bekreft) {
+          throw new Error("Passordene er ikke like.");
         }
         if (navn.trim().length < 2) {
           throw new Error("Skriv inn fullt navn.");
@@ -54,6 +58,13 @@ export default function LoggInn() {
     }
   }
 
+  function byttModus(m: Modus) {
+    setModus(m);
+    setFeil(null);
+    setMelding(null);
+    setBekreft("");
+  }
+
   const tittel =
     modus === "logg-inn"
       ? "Logg inn"
@@ -61,11 +72,14 @@ export default function LoggInn() {
         ? "Opprett bruker"
         : "Glemt passord";
 
+  const bekreftFeil =
+    modus === "registrer" && bekreft !== "" && bekreft !== passord;
+
   return (
     <div className="min-h-screen flex items-center justify-center px-4">
       <div className="w-full max-w-sm">
         <div className="flex items-center gap-2 justify-center mb-8">
-          <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center text-bg font-bold">
+          <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center text-primaryFg font-bold">
             VM
           </div>
           <span className="text-xl font-semibold">VM-tipping</span>
@@ -114,15 +128,25 @@ export default function LoggInn() {
               required
             />
             {modus !== "glemt" && (
-              <Felt
+              <PassordFelt
                 etikett="Passord"
-                type="password"
                 verdi={passord}
                 onChange={setPassord}
                 autoComplete={
                   modus === "registrer" ? "new-password" : "current-password"
                 }
-                required
+                hint={
+                  modus === "registrer" ? "Minst 8 tegn" : undefined
+                }
+              />
+            )}
+            {modus === "registrer" && (
+              <PassordFelt
+                etikett="Bekreft passord"
+                verdi={bekreft}
+                onChange={setBekreft}
+                autoComplete="new-password"
+                feil={bekreftFeil ? "Passordene er ikke like" : undefined}
               />
             )}
 
@@ -139,8 +163,8 @@ export default function LoggInn() {
 
             <button
               type="submit"
-              disabled={laster}
-              className="w-full h-11 rounded-xl bg-primary text-bg font-semibold hover:bg-primaryDark transition disabled:opacity-50 active:scale-[0.98]"
+              disabled={laster || bekreftFeil}
+              className="w-full h-11 rounded-xl bg-primary text-primaryFg font-semibold hover:bg-primaryDark transition disabled:opacity-50 active:scale-[0.98]"
             >
               {laster
                 ? "Vent…"
@@ -156,7 +180,7 @@ export default function LoggInn() {
             {modus === "logg-inn" && (
               <>
                 <button
-                  onClick={() => setModus("glemt")}
+                  onClick={() => byttModus("glemt")}
                   className="hover:text-text"
                 >
                   Glemt passord?
@@ -164,7 +188,7 @@ export default function LoggInn() {
                 <div>
                   Ingen bruker?{" "}
                   <button
-                    onClick={() => setModus("registrer")}
+                    onClick={() => byttModus("registrer")}
                     className="text-primary hover:underline"
                   >
                     Opprett en
@@ -174,7 +198,7 @@ export default function LoggInn() {
             )}
             {modus === "registrer" && (
               <button
-                onClick={() => setModus("logg-inn")}
+                onClick={() => byttModus("logg-inn")}
                 className="hover:text-text"
               >
                 Har du allerede bruker? Logg inn
@@ -182,7 +206,7 @@ export default function LoggInn() {
             )}
             {modus === "glemt" && (
               <button
-                onClick={() => setModus("logg-inn")}
+                onClick={() => byttModus("logg-inn")}
                 className="hover:text-text"
               >
                 Tilbake til innlogging
@@ -214,6 +238,70 @@ function Felt({ etikett, verdi, onChange, ...rest }: FeltProps) {
         onChange={(e) => onChange(e.target.value)}
         className="w-full h-11 px-3 rounded-xl bg-elevated border border-border focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 transition"
       />
+    </label>
+  );
+}
+
+function PassordFelt({
+  etikett,
+  verdi,
+  onChange,
+  hint,
+  feil,
+  autoComplete,
+}: {
+  etikett: string;
+  verdi: string;
+  onChange: (v: string) => void;
+  hint?: string;
+  feil?: string;
+  autoComplete?: string;
+}) {
+  const [vis, setVis] = useState(false);
+  return (
+    <label className="block">
+      <div className="flex items-baseline justify-between mb-1">
+        <span className="text-xs text-muted">{etikett}</span>
+        {hint && !feil && (
+          <span className="text-[10px] text-muted">{hint}</span>
+        )}
+        {feil && <span className="text-[10px] text-danger">{feil}</span>}
+      </div>
+      <div className="relative">
+        <input
+          type={vis ? "text" : "password"}
+          value={verdi}
+          onChange={(e) => onChange(e.target.value)}
+          autoComplete={autoComplete}
+          required
+          className={`w-full h-11 pl-3 pr-11 rounded-xl bg-elevated border focus:outline-none focus:ring-2 transition ${
+            feil
+              ? "border-danger/50 focus:border-danger focus:ring-danger/20"
+              : "border-border focus:border-primary focus:ring-primary/20"
+          }`}
+        />
+        <button
+          type="button"
+          onClick={() => setVis((v) => !v)}
+          className="absolute right-1.5 top-1/2 -translate-y-1/2 w-8 h-8 rounded-lg text-muted hover:text-text hover:bg-border/50 flex items-center justify-center transition"
+          aria-label={vis ? "Skjul passord" : "Vis passord"}
+          tabIndex={-1}
+        >
+          {vis ? (
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M9.88 9.88a3 3 0 1 0 4.24 4.24" />
+              <path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68" />
+              <path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61" />
+              <line x1="2" y1="2" x2="22" y2="22" />
+            </svg>
+          ) : (
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z" />
+              <circle cx="12" cy="12" r="3" />
+            </svg>
+          )}
+        </button>
+      </div>
     </label>
   );
 }

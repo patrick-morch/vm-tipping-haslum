@@ -23,7 +23,6 @@ export default function Skall({ children }: { children: ReactNode }) {
     { href: "/kamper", tittel: "Kamper", ikon: "⚽" },
     { href: "/sluttspill", tittel: "Bracket", ikon: "🏆" },
     { href: "/spesial", tittel: "Spesial", ikon: "⭐" },
-    { href: "/mine-tips", tittel: "Mine", ikon: "📋" },
     { href: "/ledertavle", tittel: "Tabell", ikon: "🏅" },
   ];
 
@@ -82,7 +81,7 @@ export default function Skall({ children }: { children: ReactNode }) {
       </main>
 
       <nav className="fixed bottom-0 left-0 right-0 bg-surface border-t border-border">
-        <div className="max-w-[480px] mx-auto grid grid-cols-5">
+        <div className="max-w-[480px] mx-auto grid grid-cols-4">
           {nav.map((n) => {
             const aktiv = path === n.href;
             return (

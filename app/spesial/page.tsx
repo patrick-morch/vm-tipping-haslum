@@ -23,10 +23,8 @@ function Spesial() {
   const { user } = useAuth();
   const lagret = useMittSpesialTip(user?.uid);
   const [vmVinner, setVmVinner] = useState("");
-  const [vmFinalist, setVmFinalist] = useState("");
   const [toppscorer, setToppscorer] = useState("");
   const [toppassist, setToppassist] = useState("");
-  const [mestRødeKort, setMestRødeKort] = useState("");
   const klar = useRef(false);
 
   useEffect(() => {
@@ -35,55 +33,34 @@ function Spesial() {
       return;
     }
     setVmVinner(lagret.vmVinner);
-    setVmFinalist(lagret.vmFinalist);
     setToppscorer(lagret.toppscorer);
     setToppassist(lagret.toppassist);
-    setMestRødeKort(lagret.mestRødeKort);
     klar.current = true;
   }, [lagret]);
 
   useEffect(() => {
     if (!user || !klar.current) return;
-    // Hopp over hvis ingenting er endret
     if (
       lagret &&
       lagret.vmVinner === vmVinner &&
-      lagret.vmFinalist === vmFinalist &&
       lagret.toppscorer === toppscorer &&
-      lagret.toppassist === toppassist &&
-      lagret.mestRødeKort === mestRødeKort
+      lagret.toppassist === toppassist
     )
       return;
-    if (
-      !lagret &&
-      !vmVinner &&
-      !vmFinalist &&
-      !toppscorer &&
-      !toppassist &&
-      !mestRødeKort
-    )
-      return;
+    if (!lagret && !vmVinner && !toppscorer && !toppassist) return;
     const t = setTimeout(() => {
       lagreSpesialTip({
         uid: user.uid,
         vmVinner,
-        vmFinalist,
+        vmFinalist: lagret?.vmFinalist || "",
         toppscorer,
         toppassist,
-        mestRødeKort,
+        mestRødeKort: lagret?.mestRødeKort || "",
         lagretTid: Date.now(),
       });
     }, 600);
     return () => clearTimeout(t);
-  }, [
-    vmVinner,
-    vmFinalist,
-    toppscorer,
-    toppassist,
-    mestRødeKort,
-    user,
-    lagret,
-  ]);
+  }, [vmVinner, toppscorer, toppassist, user, lagret]);
 
   return (
     <div className="space-y-4">
@@ -101,19 +78,6 @@ function Spesial() {
         farge="gold"
       >
         <LagVelger verdi={vmVinner} onVelg={setVmVinner} />
-      </Boks>
-
-      <Boks
-        tittel="Hvem taper finalen?"
-        ikon="🥈"
-        poeng={POENG.vmFinalist}
-        farge="accent"
-      >
-        <LagVelger
-          verdi={vmFinalist}
-          onVelg={setVmFinalist}
-          skjul={vmVinner ? [vmVinner] : []}
-        />
       </Boks>
 
       <Boks
@@ -139,19 +103,6 @@ function Spesial() {
           verdi={toppassist}
           onChange={setToppassist}
           placeholder="F.eks. Martin Ødegaard"
-        />
-      </Boks>
-
-      <Boks
-        tittel="Flest røde kort"
-        ikon="🟥"
-        poeng={POENG.mestRødeKort}
-        farge="danger"
-      >
-        <TekstFelt
-          verdi={mestRødeKort}
-          onChange={setMestRødeKort}
-          placeholder="Spillernavn"
         />
       </Boks>
     </div>
@@ -198,11 +149,9 @@ function Boks({
 function LagVelger({
   verdi,
   onVelg,
-  skjul = [],
 }: {
   verdi: string;
   onVelg: (l: string) => void;
-  skjul?: string[];
 }) {
   return (
     <select
@@ -211,7 +160,7 @@ function LagVelger({
       className="w-full h-11 px-3 rounded-xl bg-elevated border border-border focus:border-primary focus:outline-none"
     >
       <option value="">Velg lag…</option>
-      {ALLE_LAG.filter((l) => !skjul.includes(l)).map((l) => (
+      {ALLE_LAG.map((l) => (
         <option key={l} value={l}>
           {l}
         </option>
