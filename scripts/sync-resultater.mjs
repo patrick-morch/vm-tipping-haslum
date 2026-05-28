@@ -1,38 +1,43 @@
 // Henter siste VM-resultater fra TheSportsDB og oppdaterer Firestore.
-// Trenger miljøvariabel FIREBASE_SERVICE_ACCOUNT (base64-encodet JSON).
 //
-// Kjøring lokalt:
-//   FIREBASE_SERVICE_ACCOUNT=$(base64 < sa.json) node scripts/sync-resultater.mjs
-//
-// I GitHub Actions er FIREBASE_SERVICE_ACCOUNT en repository secret.
+// Strategi:
+// 1) Gruppespill: våre 72 kamper er forhåndsseedet (A1..L6). Matcher events
+//    på lag-par og oppdaterer resultat.
+// 2) Knockout: TheSportsDB legger inn matchups så fort FIFA bestemmer dem
+//    etter gruppespillet. Vi oppretter nye kamper med id 'kn-<idEvent>' og
+//    riktig runde-navn. Resultater fylles inn i samme sync.
 
 import admin from "firebase-admin";
 import { tilNorsk } from "./lib/lag-mapping.mjs";
-import { GRUPPER, gruppeForLag } from "./lib/grupper.mjs";
-import {
-  genererSluttspill32del,
-  gruppeStanding,
-} from "./lib/knockout.mjs";
 
 const SPORTSDB_BASE = "https://www.thesportsdb.com/api/v1/json/3";
 const LIGA_ID = "4429"; // FIFA World Cup
 
+// TheSportsDB-runder → norske rundenavn. Gruppespill (1-3) håndteres
+// av eksisterende A1..L6, så bare knockout-runder mappes her.
+// intRound for 32-team knockout-format (gjetning — justeres når data dukker opp):
+//   4 = 32-delsfinale, 5 = 16-delsfinale, 6 = kvart, 7 = semi,
+//   8 = bronsefinale, 9 = finale
+const KNOCKOUT_RUNDE = {
+  4: "32-delsfinale",
+  5: "16-delsfinale",
+  6: "Kvartfinale",
+  7: "Semifinale",
+  8: "Bronsefinale",
+  9: "Finale",
+};
+
 function init() {
   if (admin.apps.length) return;
   const raw = process.env.FIREBASE_SERVICE_ACCOUNT;
-  if (!raw) {
-    throw new Error("FIREBASE_SERVICE_ACCOUNT mangler i miljøet.");
-  }
-  // Aksepterer både rå JSON og base64-JSON
+  if (!raw) throw new Error("FIREBASE_SERVICE_ACCOUNT mangler i miljøet.");
   let json;
   try {
     json = JSON.parse(raw);
   } catch {
     json = JSON.parse(Buffer.from(raw, "base64").toString("utf-8"));
   }
-  admin.initializeApp({
-    credential: admin.credential.cert(json),
-  });
+  admin.initializeApp({ credential: admin.credential.cert(json) });
 }
 
 async function hentEvents() {
@@ -43,16 +48,14 @@ async function hentEvents() {
   return data.events || [];
 }
 
-/**
- * Mapper et TheSportsDB-event til våre lagnavn + utledning av kamp-id.
- * Returnerer null hvis vi ikke kan matche.
- */
 function tilNorske(event) {
   const h = tilNorsk(event.strHomeTeam);
   const b = tilNorsk(event.strAwayTeam);
   if (!h || !b) return null;
   const tid = new Date(event.strTimestamp + "Z").getTime();
   return {
+    idEvent: event.idEvent,
+    intRound: Number(event.intRound) || 0,
     hjemmelag: h,
     bortelag: b,
     starttid: tid,
@@ -66,19 +69,11 @@ function tilNorske(event) {
   };
 }
 
-/**
- * Finn vår kamp-id som matcher et eksternt event.
- *
- * Gruppekamper (round-robin): hvert lag-par møtes kun én gang, så vi
- * matcher kun på lag-par.
- *
- * Knockout: samme lag-par kan teoretisk dukke opp i flere runder. Da
- * legger vi til en sjekk på at runden matcher. Når vi har en runde-
- * indikasjon i det eksterne eventet kan vi forbedre dette.
- */
-function finnVårKampId(våreKamper, ekstern) {
+function finnGruppeKampId(våreKamper, ekstern) {
+  // Bare matche mot gruppekamper (A1..L6) på lag-par
   const treff = [];
   for (const [id, k] of Object.entries(våreKamper)) {
+    if (!k.runde?.startsWith("Gruppe")) continue;
     const sammeLag =
       (k.hjemmelag === ekstern.hjemmelag &&
         k.bortelag === ekstern.bortelag) ||
@@ -89,7 +84,6 @@ function finnVårKampId(våreKamper, ekstern) {
   }
   if (treff.length === 0) return null;
   if (treff.length === 1) return treff[0];
-  // Flere kandidater (kan skje ved knockout): velg den nærmeste i tid
   treff.sort(
     (a, b) =>
       Math.abs(a.kamp.starttid - ekstern.starttid) -
@@ -112,93 +106,103 @@ async function syncResultater() {
   );
   console.log(`Vi har ${Object.keys(våreKamper).length} kamper i Firestore`);
   if (Object.keys(våreKamper).length === 0) {
-    console.log("Ingen kamper i databasen — kjør 'Seed VM-kamper' i admin først.");
-    return { oppdatert: 0, fasit: false };
+    console.log("Ingen kamper — kjør 'Seed VM-kamper' i admin først.");
+    return { oppdatert: 0, opprettet: 0 };
   }
 
-  let oppdatert = 0;
+  let oppdatertResultat = 0;
+  let opprettetKnockout = 0;
+
   for (const e of events) {
     const norsk = tilNorske(e);
     if (!norsk) {
       console.log(`  ? Ukjent lag: ${e.strHomeTeam} vs ${e.strAwayTeam}`);
       continue;
     }
-    const treff = finnVårKampId(våreKamper, norsk);
-    if (!treff) {
-      console.log(
-        `  ? Ingen match: ${norsk.hjemmelag} vs ${norsk.bortelag} ${new Date(norsk.starttid).toISOString().slice(0, 16)}`,
-      );
-      continue;
-    }
-    if (!norsk.resultat) continue; // ikke spilt ennå
 
-    // Hvis lagene er flippet i TheSportsDB sammenlignet med oss, snu scoren
-    const skrivResultat = treff.flippet
-      ? { hjemme: norsk.resultat.borte, borte: norsk.resultat.hjemme }
-      : norsk.resultat;
+    const erKnockout = norsk.intRound >= 4;
 
-    const eksisterende = treff.kamp.resultat;
-    if (
-      eksisterende &&
-      eksisterende.hjemme === skrivResultat.hjemme &&
-      eksisterende.borte === skrivResultat.borte
-    ) {
-      continue;
-    }
-
-    await db
-      .collection("kamper")
-      .doc(treff.id)
-      .update({ resultat: skrivResultat });
-    console.log(
-      `  ✓ ${treff.id}: ${treff.kamp.hjemmelag} ${skrivResultat.hjemme}-${skrivResultat.borte} ${treff.kamp.bortelag}`,
-    );
-    oppdatert += 1;
-  }
-
-  // Hvis hele gruppespillet er ferdig, generér 32-delsfinaler
-  const oppdatertSnap = await db.collection("kamper").get();
-  const alleKamper = oppdatertSnap.docs.map((d) => ({
-    id: d.id,
-    ...d.data(),
-  }));
-
-  const gruppeKamper = alleKamper.filter((k) => k.runde?.startsWith("Gruppe"));
-  const ferdigeGruppeKamper = gruppeKamper.filter((k) => k.resultat);
-
-  if (
-    gruppeKamper.length === 72 &&
-    ferdigeGruppeKamper.length === 72 &&
-    !alleKamper.some((k) => k.runde === "32-delsfinale")
-  ) {
-    console.log("\nGruppespill ferdig — genererer 32-delsfinaler…");
-    const grupperResultater = {};
-    for (const g of GRUPPER) {
-      const kamperGruppe = gruppeKamper.filter(
-        (k) => k.runde === `Gruppe ${g.id}`,
-      );
-      grupperResultater[g.id] = gruppeStanding(g.lag, kamperGruppe);
-    }
-    const sluttspill = genererSluttspill32del(grupperResultater);
-    if (sluttspill) {
-      const batch = db.batch();
-      for (const k of sluttspill) {
-        batch.set(db.collection("kamper").doc(k.id), {
-          hjemmelag: k.hjemmelag,
-          bortelag: k.bortelag,
-          starttid: 0, // settes manuelt av admin etter at FIFA bekrefter tider
-          runde: k.runde,
-          bonusFaktor: 1,
-          resultat: null,
-        });
+    if (!erKnockout) {
+      // === Gruppespill: oppdater eksisterende kamp ===
+      const treff = finnGruppeKampId(våreKamper, norsk);
+      if (!treff) {
+        console.log(
+          `  ? Ingen gruppe-match: ${norsk.hjemmelag} vs ${norsk.bortelag}`,
+        );
+        continue;
       }
-      await batch.commit();
-      console.log(`  ✓ Skrev ${sluttspill.length} 32-delsfinaler`);
+      if (!norsk.resultat) continue;
+
+      const skriv = treff.flippet
+        ? { hjemme: norsk.resultat.borte, borte: norsk.resultat.hjemme }
+        : norsk.resultat;
+      const eks = treff.kamp.resultat;
+      if (
+        eks &&
+        eks.hjemme === skriv.hjemme &&
+        eks.borte === skriv.borte
+      )
+        continue;
+
+      await db.collection("kamper").doc(treff.id).update({ resultat: skriv });
+      console.log(
+        `  ✓ ${treff.id}: ${treff.kamp.hjemmelag} ${skriv.hjemme}-${skriv.borte} ${treff.kamp.bortelag}`,
+      );
+      oppdatertResultat += 1;
+    } else {
+      // === Knockout: opprett kamp hvis den ikke finnes, ellers oppdater ===
+      const id = `kn-${norsk.idEvent}`;
+      const runde = KNOCKOUT_RUNDE[norsk.intRound] || `Runde ${norsk.intRound}`;
+      const eks = våreKamper[id];
+
+      if (!eks) {
+        await db.collection("kamper").doc(id).set({
+          hjemmelag: norsk.hjemmelag,
+          bortelag: norsk.bortelag,
+          starttid: norsk.starttid,
+          runde,
+          bonusFaktor:
+            norsk.hjemmelag === "Norge" || norsk.bortelag === "Norge" ? 2 : 1,
+          resultat: norsk.resultat,
+        });
+        console.log(`  + ${id}: ${runde} ${norsk.hjemmelag} vs ${norsk.bortelag}`);
+        opprettetKnockout += 1;
+      } else {
+        // Oppdater hvis matchups eller resultat har endret seg
+        const oppdateringer = {};
+        if (
+          eks.hjemmelag !== norsk.hjemmelag ||
+          eks.bortelag !== norsk.bortelag
+        ) {
+          oppdateringer.hjemmelag = norsk.hjemmelag;
+          oppdateringer.bortelag = norsk.bortelag;
+        }
+        if (eks.starttid !== norsk.starttid) {
+          oppdateringer.starttid = norsk.starttid;
+        }
+        if (
+          norsk.resultat &&
+          (!eks.resultat ||
+            eks.resultat.hjemme !== norsk.resultat.hjemme ||
+            eks.resultat.borte !== norsk.resultat.borte)
+        ) {
+          oppdateringer.resultat = norsk.resultat;
+        }
+        if (Object.keys(oppdateringer).length > 0) {
+          await db.collection("kamper").doc(id).update(oppdateringer);
+          console.log(
+            `  ✓ ${id}: oppdatert (${Object.keys(oppdateringer).join(", ")})`,
+          );
+          oppdatertResultat += 1;
+        }
+      }
     }
   }
 
-  return { oppdatert };
+  return { oppdatert: oppdatertResultat, opprettet: opprettetKnockout };
 }
 
-const resultat = await syncResultater();
-console.log(`\n✓ Sync ferdig. Oppdatert ${resultat.oppdatert} kamper.`);
+const r = await syncResultater();
+console.log(
+  `\n✓ Sync ferdig. Oppdaterte ${r.oppdatert} kamper, opprettet ${r.opprettet} knockout-kamper.`,
+);
