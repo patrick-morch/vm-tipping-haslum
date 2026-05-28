@@ -130,13 +130,6 @@ function GruppeDetalj() {
         />
       </div>
 
-      <div className="text-xs text-muted px-1">
-        <span className="text-success font-semibold">1</span> og{" "}
-        <span className="text-accent font-semibold">2</span> går direkte videre
-        · <span className="text-muted font-semibold">3</span> har sjanse som
-        beste treer
-      </div>
-
       <div className="space-y-3">
         <h2 className="font-semibold text-sm uppercase tracking-wider text-muted">
           Kamper

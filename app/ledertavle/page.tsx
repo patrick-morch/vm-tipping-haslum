@@ -140,13 +140,6 @@ function Ledertavle() {
         </div>
       )}
 
-      <div className="bg-surface/50 border border-border/50 rounded-2xl p-3 text-[11px] text-muted text-center leading-relaxed">
-        <span className="text-success font-semibold">3p</span> eksakt ·{" "}
-        <span className="text-accent font-semibold">1p</span> riktig utfall ·{" "}
-        <span className="text-norge font-semibold">×2</span> Norge-kamper ·{" "}
-        <span className="text-gold font-semibold">25p</span> VM-vinner ·{" "}
-        <span className="text-primary font-semibold">15p</span> toppscorer
-      </div>
     </div>
   );
 }
