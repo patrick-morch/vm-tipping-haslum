@@ -93,9 +93,6 @@ function KampKort({
 }) {
   const [hjem, setHjem] = useState(tip ? String(tip.hjemme) : "");
   const [bort, setBort] = useState(tip ? String(tip.borte) : "");
-  const [lagrer, setLagrer] = useState(false);
-  const [lagret, setLagret] = useState(false);
-
   useEffect(() => {
     if (tip) {
       setHjem(String(tip.hjemme));
@@ -110,15 +107,8 @@ function KampKort({
 
   useEffect(() => {
     if (!gyldig || uendret) return;
-    const t = setTimeout(async () => {
-      setLagrer(true);
-      try {
-        await onLagre(Number(hjem), Number(bort));
-        setLagret(true);
-        setTimeout(() => setLagret(false), 1500);
-      } finally {
-        setLagrer(false);
-      }
+    const t = setTimeout(() => {
+      onLagre(Number(hjem), Number(bort));
     }, 500);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -168,34 +158,8 @@ function KampKort({
           <div className="font-semibold">{kamp.bortelag}</div>
         </div>
       </div>
-
-      <div className="mt-3 flex items-center justify-end h-5">
-        <Status lagrer={lagrer} lagret={lagret} tippet={Boolean(tip)} />
-      </div>
     </div>
   );
-}
-
-function Status({
-  lagrer,
-  lagret,
-  tippet,
-}: {
-  lagrer: boolean;
-  lagret: boolean;
-  tippet: boolean;
-}) {
-  if (lagrer)
-    return <span className="text-xs text-muted">Lagrer…</span>;
-  if (lagret)
-    return (
-      <span className="text-xs text-success font-semibold flex items-center gap-1">
-        ✓ Lagret
-      </span>
-    );
-  if (tippet)
-    return <span className="text-xs text-muted">Tippet</span>;
-  return <span className="text-xs text-muted">Skriv resultat</span>;
 }
 
 function Sc({

@@ -27,7 +27,6 @@ function Spesial() {
   const [toppscorer, setToppscorer] = useState("");
   const [toppassist, setToppassist] = useState("");
   const [mestRødeKort, setMestRødeKort] = useState("");
-  const [status, setStatus] = useState<"idle" | "lagrer" | "lagret">("idle");
   const klar = useRef(false);
 
   useEffect(() => {
@@ -64,9 +63,8 @@ function Spesial() {
       !mestRødeKort
     )
       return;
-    const t = setTimeout(async () => {
-      setStatus("lagrer");
-      await lagreSpesialTip({
+    const t = setTimeout(() => {
+      lagreSpesialTip({
         uid: user.uid,
         vmVinner,
         vmFinalist,
@@ -75,8 +73,6 @@ function Spesial() {
         mestRødeKort,
         lagretTid: Date.now(),
       });
-      setStatus("lagret");
-      setTimeout(() => setStatus("idle"), 1500);
     }, 600);
     return () => clearTimeout(t);
   }, [
@@ -91,21 +87,11 @@ function Spesial() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-end justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold">Spesialtips</h1>
-          <p className="text-muted text-sm">
-            Lagres automatisk. Kan endres frem til VM starter.
-          </p>
-        </div>
-        <div className="h-5">
-          {status === "lagrer" && (
-            <span className="text-xs text-muted">Lagrer…</span>
-          )}
-          {status === "lagret" && (
-            <span className="text-xs text-success font-semibold">✓ Lagret</span>
-          )}
-        </div>
+      <div>
+        <h1 className="text-2xl font-semibold">Spesialtips</h1>
+        <p className="text-muted text-sm">
+          Kan endres frem til VM starter.
+        </p>
       </div>
 
       <Boks

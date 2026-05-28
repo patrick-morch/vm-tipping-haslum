@@ -168,9 +168,6 @@ function KampRad({
 }) {
   const [hjem, setHjem] = useState(tip ? String(tip.hjemme) : "");
   const [bort, setBort] = useState(tip ? String(tip.borte) : "");
-  const [lagret, setLagret] = useState(false);
-  const [lagrer, setLagrer] = useState(false);
-
   useEffect(() => {
     if (tip) {
       setHjem(String(tip.hjemme));
@@ -186,15 +183,8 @@ function KampRad({
 
   useEffect(() => {
     if (låst || !gyldig || uendret) return;
-    const t = setTimeout(async () => {
-      setLagrer(true);
-      try {
-        await onLagre(Number(hjem), Number(bort));
-        setLagret(true);
-        setTimeout(() => setLagret(false), 1500);
-      } finally {
-        setLagrer(false);
-      }
+    const t = setTimeout(() => {
+      onLagre(Number(hjem), Number(bort));
     }, 500);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -247,21 +237,11 @@ function KampRad({
           {kamp.bortelag}
         </div>
       </div>
-      <div className="mt-2 flex items-center justify-end h-4">
-        {låst ? (
+      {låst && (
+        <div className="mt-2 flex items-center justify-end">
           <span className="text-[10px] text-muted">Låst</span>
-        ) : lagrer ? (
-          <span className="text-[10px] text-muted">Lagrer…</span>
-        ) : lagret ? (
-          <span className="text-[10px] text-success font-semibold">
-            ✓ Lagret
-          </span>
-        ) : tip ? (
-          <span className="text-[10px] text-muted">Tippet</span>
-        ) : (
-          <span className="text-[10px] text-muted">Skriv resultat</span>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 }
