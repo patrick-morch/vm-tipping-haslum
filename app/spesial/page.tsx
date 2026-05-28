@@ -6,6 +6,7 @@ import { lagreSpesialTip, useMittSpesialTip } from "@/lib/data";
 import { GRUPPER, POENG } from "@/lib/vm-data";
 import Skall from "@/components/Skall";
 import Beskytt from "@/components/Beskytt";
+import SpillerVelger from "@/components/SpillerVelger";
 
 export default function SpesialSide() {
   return (
@@ -86,10 +87,11 @@ function Spesial() {
         poeng={POENG.toppscorer}
         farge="primary"
       >
-        <TekstFelt
+        <SpillerVelger
           verdi={toppscorer}
-          onChange={setToppscorer}
-          placeholder="F.eks. Erling Haaland"
+          onVelg={setToppscorer}
+          placeholder="Søk spiller, f.eks. Haaland…"
+          posFilter={["FW", "MF"]}
         />
       </Boks>
 
@@ -99,10 +101,11 @@ function Spesial() {
         poeng={POENG.toppassist}
         farge="primary"
       >
-        <TekstFelt
+        <SpillerVelger
           verdi={toppassist}
-          onChange={setToppassist}
-          placeholder="F.eks. Martin Ødegaard"
+          onVelg={setToppassist}
+          placeholder="Søk spiller, f.eks. Ødegaard…"
+          posFilter={["FW", "MF", "DF"]}
         />
       </Boks>
     </div>
@@ -169,22 +172,3 @@ function LagVelger({
   );
 }
 
-function TekstFelt({
-  verdi,
-  onChange,
-  placeholder,
-}: {
-  verdi: string;
-  onChange: (v: string) => void;
-  placeholder: string;
-}) {
-  return (
-    <input
-      type="text"
-      value={verdi}
-      onChange={(e) => onChange(e.target.value)}
-      placeholder={placeholder}
-      className="w-full h-11 px-3 rounded-xl bg-elevated border border-border focus:border-primary focus:outline-none"
-    />
-  );
-}
