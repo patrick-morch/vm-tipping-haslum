@@ -60,9 +60,9 @@ function Admin() {
 }
 
 const SYNC_WORKFLOW_URL =
-  "https://github.com/patrick-morch/vm-tipping/actions/workflows/sync-resultater.yml";
+  "https://github.com/patrick-morch/vm-tipping-haslum/actions/workflows/sync-resultater.yml";
 const AGGREGER_WORKFLOW_URL =
-  "https://github.com/patrick-morch/vm-tipping/actions/workflows/aggreger-poeng.yml";
+  "https://github.com/patrick-morch/vm-tipping-haslum/actions/workflows/aggreger-poeng.yml";
 
 function SyncSeksjon() {
   return (
