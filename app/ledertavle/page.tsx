@@ -104,48 +104,24 @@ function Ledertavle() {
         <Podium top3={top3} egenUid={user?.uid} ledersum={leder} />
       )}
 
-      <div className="grid grid-cols-4 gap-1.5 bg-surface border border-border rounded-2xl p-1.5">
-        {(
-          [
-            { v: "alle", t: "Alle", ikon: "👥" },
-            { v: "trener", t: "Trener", ikon: "🧥" },
-            { v: "spiller", t: "Spiller", ikon: "⚽" },
-            { v: "annet", t: "Annet", ikon: "✨" },
-          ] as const
-        ).map((f) => (
-          <button
-            key={f.v}
-            onClick={() => setRolleFilter(f.v)}
-            className={`h-10 rounded-xl text-xs font-semibold transition flex flex-col items-center justify-center gap-0.5 ${
-              rolleFilter === f.v
-                ? "bg-primary text-primaryFg"
-                : "text-muted hover:text-text"
-            }`}
-          >
-            <span className="text-sm leading-none">{f.ikon}</span>
-            <span className="leading-none">{f.t}</span>
-          </button>
-        ))}
-      </div>
-
-      {resten.length > 0 && (
-        <ListeKort
-          rader={resten}
-          egenUid={user?.uid}
-          startPlass={4}
-          ledersum={leder}
-        />
-      )}
-
-      {synlige.length === 0 && (
-        <div className="bg-surface border border-border rounded-2xl px-4 py-8 text-center text-muted text-sm">
-          Ingen medlemmer å vise.
-        </div>
-      )}
-
+      <ListeKort
+        rader={resten}
+        egenUid={user?.uid}
+        startPlass={4}
+        ledersum={leder}
+        rolleFilter={rolleFilter}
+        onFilter={setRolleFilter}
+      />
     </div>
   );
 }
+
+const FILTRE = [
+  { v: "alle", t: "Alle", ikon: "👥" },
+  { v: "trener", t: "Trener", ikon: "🧥" },
+  { v: "spiller", t: "Spiller", ikon: "⚽" },
+  { v: "annet", t: "Annet", ikon: "✨" },
+] as const;
 
 function DinPlasseringKort({
   rad,
@@ -307,14 +283,39 @@ function ListeKort({
   egenUid,
   startPlass,
   ledersum,
+  rolleFilter,
+  onFilter,
 }: {
   rader: LedertavleRad[];
   egenUid: string | undefined;
   startPlass: number;
   ledersum: number;
+  rolleFilter: "alle" | "trener" | "spiller" | "annet";
+  onFilter: (v: "alle" | "trener" | "spiller" | "annet") => void;
 }) {
   return (
     <div className="bg-surface border border-border rounded-2xl overflow-hidden">
+      <div className="grid grid-cols-4 gap-1 p-1.5 bg-elevated/40 border-b border-border">
+        {FILTRE.map((f) => (
+          <button
+            key={f.v}
+            onClick={() => onFilter(f.v)}
+            className={`h-10 rounded-lg text-xs font-semibold transition flex flex-col items-center justify-center gap-0.5 ${
+              rolleFilter === f.v
+                ? "bg-primary text-primaryFg"
+                : "text-muted hover:text-text"
+            }`}
+          >
+            <span className="text-sm leading-none">{f.ikon}</span>
+            <span className="leading-none">{f.t}</span>
+          </button>
+        ))}
+      </div>
+      {rader.length === 0 && (
+        <div className="px-4 py-8 text-center text-muted text-sm">
+          Ingen medlemmer å vise.
+        </div>
+      )}
       {rader.map((rad, i) => {
         const plass = startPlass + i;
         const egen = rad.uid === egenUid;
