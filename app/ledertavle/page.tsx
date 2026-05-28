@@ -23,7 +23,7 @@ export default function LedertavleSide() {
 function initialer(navn: string): string {
   return navn
     .trim()
-    .split(/\s+/)
+    .split(/[\s\-]+/)
     .filter((d) => d.length > 0)
     .map((d) => d[0])
     .join("")
