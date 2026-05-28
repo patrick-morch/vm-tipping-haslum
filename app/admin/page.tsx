@@ -6,11 +6,15 @@ import { useAuth } from "@/lib/auth-context";
 import {
   useKamper,
   useBrukere,
+  useFasit,
   seedAlleKamper,
   slettBruker,
   oppdaterKlubbRolle,
   nullstillAlleResultater,
+  lagreFasit,
 } from "@/lib/data";
+import { GRUPPER } from "@/lib/vm-data";
+import SpillerVelger from "@/components/SpillerVelger";
 import type { KlubbRolle } from "@/lib/types";
 import { Bruker, Match } from "@/lib/types";
 import Skall from "@/components/Skall";
@@ -47,6 +51,8 @@ function Admin() {
       <SeedSeksjon kamper={kamper} />
 
       <SyncSeksjon />
+
+      <FasitSeksjon />
 
       <MedlemmerSeksjon brukere={brukere} egenUid={bruker.uid} />
     </div>
@@ -400,6 +406,118 @@ function TilbakestillModal({
         </div>
       </div>
     </div>
+  );
+}
+
+function FasitSeksjon() {
+  const fasit = useFasit();
+  const [toppscorer, setToppscorer] = useState("");
+  const [toppassist, setToppassist] = useState("");
+  const [vmVinner, setVmVinner] = useState("");
+  const [lagrer, setLagrer] = useState(false);
+  const [klart, setKlart] = useState(false);
+
+  useEffect(() => {
+    setToppscorer(fasit.toppscorer || "");
+    setToppassist(fasit.toppassist || "");
+    setVmVinner(fasit.vmVinner || "");
+  }, [fasit.toppscorer, fasit.toppassist, fasit.vmVinner]);
+
+  async function lagre() {
+    setLagrer(true);
+    try {
+      await lagreFasit({
+        ...fasit,
+        vmVinner: vmVinner.trim(),
+        toppscorer: toppscorer.trim(),
+        toppassist: toppassist.trim(),
+      });
+      setKlart(true);
+      setTimeout(() => setKlart(false), 1800);
+    } finally {
+      setLagrer(false);
+    }
+  }
+
+  const endret =
+    vmVinner.trim() !== (fasit.vmVinner || "") ||
+    toppscorer.trim() !== (fasit.toppscorer || "") ||
+    toppassist.trim() !== (fasit.toppassist || "");
+
+  const alleLag = GRUPPER.flatMap((g) => g.lag).sort();
+
+  return (
+    <section className="bg-surface border border-border rounded-2xl p-4 space-y-4">
+      <div>
+        <h2 className="font-semibold">Fasit</h2>
+        <p className="text-xs text-muted mt-0.5">
+          Settes når VM er ferdig. VM-vinner oppdateres automatisk når
+          finalen er spilt; toppscorer og toppassist må du legge inn selv.
+        </p>
+      </div>
+
+      <div className="space-y-3">
+        <div>
+          <label className="block text-xs text-muted mb-1.5">
+            🏆 VM-vinner{" "}
+            <span className="text-[10px] text-success">(auto fra finalen)</span>
+          </label>
+          <select
+            value={vmVinner}
+            onChange={(e) => setVmVinner(e.target.value)}
+            className="w-full h-11 px-3 rounded-xl bg-elevated border border-border focus:border-primary focus:outline-none"
+          >
+            <option value="">Ikke satt ennå</option>
+            {alleLag.map((l) => (
+              <option key={l} value={l}>
+                {l}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div>
+          <label className="block text-xs text-muted mb-1.5">
+            ⚽ Toppscorer
+          </label>
+          <SpillerVelger
+            verdi={toppscorer}
+            onVelg={setToppscorer}
+            placeholder="Søk spiller…"
+            posFilter={["FW", "MF"]}
+          />
+        </div>
+
+        <div>
+          <label className="block text-xs text-muted mb-1.5">
+            🎯 Toppassist
+          </label>
+          <SpillerVelger
+            verdi={toppassist}
+            onVelg={setToppassist}
+            placeholder="Søk spiller…"
+            posFilter={["FW", "MF", "DF"]}
+          />
+        </div>
+      </div>
+
+      <button
+        onClick={lagre}
+        disabled={!endret || lagrer}
+        className={`w-full h-11 rounded-xl text-sm font-semibold transition ${
+          klart
+            ? "bg-success text-white"
+            : "bg-primary text-primaryFg hover:bg-primaryDark disabled:opacity-40 disabled:cursor-not-allowed"
+        }`}
+      >
+        {klart ? "✓ Lagret" : lagrer ? "Lagrer…" : "Lagre fasit"}
+      </button>
+
+      <p className="text-[10px] text-muted">
+        Etter lagring må aggregator-jobben kjøre for at poeng skal fordeles.
+        Klikk &quot;Aggreger poeng&quot; over for å trigge den manuelt.
+      </p>
+    </section>
   );
 }
 
