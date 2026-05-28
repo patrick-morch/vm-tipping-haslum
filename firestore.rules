@@ -1,0 +1,50 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function erInnlogget() {
+      return request.auth != null;
+    }
+    function erEier(uid) {
+      return erInnlogget() && request.auth.uid == uid;
+    }
+    function erAdmin() {
+      return erInnlogget()
+        && exists(/databases/$(database)/documents/brukere/$(request.auth.uid))
+        && get(/databases/$(database)/documents/brukere/$(request.auth.uid)).data.rolle == 'admin';
+    }
+
+    // Brukere: alle innloggede kan lese (ledertavle), bare eier kan skrive eget felt,
+    // bare admin kan endre rolle eller poeng.
+    match /brukere/{uid} {
+      allow read: if erInnlogget();
+      allow create: if erEier(uid)
+        && request.resource.data.rolle == 'medlem'
+        && request.resource.data.poeng == 0;
+      allow update: if erEier(uid)
+        && request.resource.data.rolle == resource.data.rolle
+        && request.resource.data.poeng == resource.data.poeng
+        || erAdmin();
+      allow delete: if erAdmin();
+    }
+
+    // Kamper: alle kan lese, bare admin kan skrive
+    match /kamper/{matchId} {
+      allow read: if erInnlogget();
+      allow write: if erAdmin();
+    }
+
+    // Tips: alle innloggede kan lese (etter kampstart bør håndteres i UI),
+    // bare eier kan skrive eget tip, og kun før kampstart.
+    match /tips/{tipId} {
+      allow read: if erInnlogget();
+      allow create: if erInnlogget()
+        && request.resource.data.uid == request.auth.uid
+        && get(/databases/$(database)/documents/kamper/$(request.resource.data.matchId)).data.starttid > request.time.toMillis();
+      allow update: if erInnlogget()
+        && resource.data.uid == request.auth.uid
+        && get(/databases/$(database)/documents/kamper/$(resource.data.matchId)).data.starttid > request.time.toMillis();
+      allow delete: if false;
+    }
+  }
+}
