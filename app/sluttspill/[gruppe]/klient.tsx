@@ -13,6 +13,7 @@ import {
   GRUPPER,
   NORGE,
   erNorgeKamp,
+  erTippbar,
   flagg,
   kampErLåst,
   kortLagNavn,
@@ -231,6 +232,8 @@ function KampRad({
   }, [tip]);
 
   const låst = kampErLåst(kamp);
+  const tippbar = erTippbar(kamp);
+  const disabled = låst || !tippbar;
   const gyldig =
     hjem !== "" && bort !== "" && Number(hjem) >= 0 && Number(bort) >= 0;
   const tom = hjem === "" && bort === "";
@@ -239,7 +242,7 @@ function KampRad({
     tip && gyldig && Number(hjem) === tip.hjemme && Number(bort) === tip.borte;
 
   useEffect(() => {
-    if (låst || uendret) return;
+    if (disabled || uendret) return;
     if (gyldig) {
       const t = setTimeout(() => onLagre(Number(hjem), Number(bort)), 500);
       return () => clearTimeout(t);
@@ -249,7 +252,7 @@ function KampRad({
       return () => clearTimeout(t);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hjem, bort, gyldig, tom, uendret, låst, Boolean(tip)]);
+  }, [hjem, bort, gyldig, tom, uendret, disabled, Boolean(tip)]);
 
   const dato = new Date(kamp.starttid);
   const datoStr = dato.toLocaleDateString("nb-NO", {
@@ -293,8 +296,12 @@ function KampRad({
 
   return (
     <div
-      className={`bg-surface border rounded-2xl p-3 ${
-        erNorge ? "border-norge/40" : "border-border"
+      className={`relative bg-surface border rounded-2xl p-3 ${
+        !tippbar
+          ? "border-border/40 opacity-60"
+          : erNorge
+            ? "border-norge/40"
+            : "border-border"
       }`}
     >
       <div className="flex items-center justify-between text-[11px] text-muted mb-2">
@@ -302,14 +309,21 @@ function KampRad({
           <span>
             {datoStr} · {klokke}
           </span>
-          {kamp.bonusFaktor > 1 && (
+          {kamp.bonusFaktor > 1 && tippbar && (
             <span className="px-1.5 py-0.5 rounded-full bg-norge/15 text-norge font-bold text-[9px]">
               ×{kamp.bonusFaktor}
             </span>
           )}
         </div>
-        {låst && !kamp.resultat && (
-          <span className="text-warning font-semibold">Låst</span>
+        {!tippbar ? (
+          <span className="text-[9px] uppercase tracking-wider font-bold text-muted/70 bg-elevated border border-border rounded px-1.5 py-0.5">
+            Ikke valgt
+          </span>
+        ) : (
+          låst &&
+          !kamp.resultat && (
+            <span className="text-warning font-semibold">Låst</span>
+          )
         )}
       </div>
       <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
@@ -318,9 +332,9 @@ function KampRad({
           <span className="text-base">{flagg(kamp.hjemmelag)}</span>
         </div>
         <div className="flex items-center gap-1.5">
-          <ScoreIn verdi={hjem} onChange={setHjem} låst={låst} />
+          <ScoreIn verdi={hjem} onChange={setHjem} låst={disabled} />
           <span className="text-muted text-xs">–</span>
-          <ScoreIn verdi={bort} onChange={setBort} låst={låst} />
+          <ScoreIn verdi={bort} onChange={setBort} låst={disabled} />
         </div>
         <div className="text-left font-medium text-sm min-w-0 truncate">
           <span className="text-base">{flagg(kamp.bortelag)}</span>{" "}

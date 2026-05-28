@@ -5,7 +5,7 @@ import { useSearchParams, useRouter } from "next/navigation";
 import { Suspense } from "react";
 import { useAuth } from "@/lib/auth-context";
 import { useKamper, useMineTips } from "@/lib/data";
-import { GRUPPER, NORGE, flagg, kortLagNavn } from "@/lib/vm-data";
+import { GRUPPER, NORGE, erTippbar, flagg, kortLagNavn } from "@/lib/vm-data";
 import { beregnTabell, kamperMedMineTips } from "@/lib/standings";
 import Skall from "@/components/Skall";
 import Beskytt from "@/components/Beskytt";
@@ -82,7 +82,9 @@ function GrupperFane() {
           g.lag,
           kamperMedMineTips(gruppeKamper, tips),
         );
-        const tippet = gruppeKamper.filter((k) => tips[k.id]).length;
+        const tippbare = gruppeKamper.filter(erTippbar);
+        const tippet = tippbare.filter((k) => tips[k.id]).length;
+        const totalTippbar = tippbare.length;
         const harNorge = g.lag.includes(NORGE);
         return (
           <Link
@@ -104,7 +106,9 @@ function GrupperFane() {
                   </span>
                 )}
               </div>
-              <span className="text-[10px] text-muted">{tippet}/6 tippet</span>
+              <span className="text-[10px] text-muted">
+                {tippet}/{totalTippbar} tippet
+              </span>
             </div>
             <div className="space-y-1">
               {predikert.map((s) => (

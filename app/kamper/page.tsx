@@ -7,6 +7,7 @@ import { useKamper, useMineTips, lagreTip, slettTip } from "@/lib/data";
 import { Match, Prediction, beregnPoeng } from "@/lib/types";
 import {
   erNorgeKamp,
+  erTippbar,
   flagg,
   kortLagNavn,
   LÅS_FØR_KAMP_MS,
@@ -39,7 +40,7 @@ function Kamper() {
   }, []);
 
   const åpne = kamper
-    .filter((k) => k.starttid - LÅS_FØR_KAMP_MS > nå)
+    .filter((k) => k.starttid - LÅS_FØR_KAMP_MS > nå && erTippbar(k))
     .sort((a, b) => a.starttid - b.starttid);
   const neste = åpne.slice(0, ANTALL);
   const utenTip = neste.filter((k) => !tips[k.id]).length;

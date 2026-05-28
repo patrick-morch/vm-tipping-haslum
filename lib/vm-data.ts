@@ -94,6 +94,47 @@ export function flagg(lag: string): string {
   return FLAGG[lag] || "🏳";
 }
 
+// Kuratert liste over lag der alle gruppekamper er tippbare. Pluss
+// hele Gruppe I (Norges gruppe) som inkluderes uansett. I knockout
+// er ALT tippbart.
+const TIPPBARE_GRUPPE_LAG = new Set([
+  // Eksplisitt valgte
+  "Mexico",
+  "Tyskland",
+  "Sveits",
+  "Sverige",
+  "Nederland",
+  "Argentina",
+  "Østerrike",
+  "Brasil",
+  "Skottland",
+  "Belgia",
+  "Portugal",
+  "USA",
+  "Spania",
+  "Uruguay",
+  "England",
+  "Kroatia",
+  // Hele Gruppe I (Norges gruppe)
+  "Frankrike",
+  "Senegal",
+  "Norge",
+  "Irak",
+]);
+
+export function erTippbar(kamp: {
+  runde: string;
+  hjemmelag: string;
+  bortelag: string;
+}): boolean {
+  // Knockout = alle tippbare
+  if (!kamp.runde.startsWith("Gruppe")) return true;
+  return (
+    TIPPBARE_GRUPPE_LAG.has(kamp.hjemmelag) ||
+    TIPPBARE_GRUPPE_LAG.has(kamp.bortelag)
+  );
+}
+
 // Alle 72 gruppekamper. Tider er Eastern Time (UTC-4, sommertid).
 // Format: [gruppe, "MM-DD", "HH:MM (24t ET)", hjem, bort]
 type RåKamp = [string, string, string, string, string];
