@@ -46,6 +46,20 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+/* Subtil Haslum-watermark som bakteppe. Logoen ligger fixed
+   sentralt; overlay-laget bruker bg-fargen med 92% alpha så
+   bare ~8% av logoen syntes — såvidt, smooth, fungerer i både
+   lys og mørk modus. */
+body {
+  background-image:
+    linear-gradient(rgb(var(--bg) / 0.92), rgb(var(--bg) / 0.92)),
+    url("/haslum-logo.jpeg");
+  background-position: center, center;
+  background-repeat: no-repeat, no-repeat;
+  background-size: cover, min(520px, 75vw);
+  background-attachment: fixed, fixed;
+}
+
 * {
   -webkit-tap-highlight-color: transparent;
 }
