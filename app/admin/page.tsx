@@ -8,6 +8,7 @@ import {
   useBrukere,
   seedAlleKamper,
   slettBruker,
+  nullstillAlleResultater,
 } from "@/lib/data";
 import { Bruker, Match } from "@/lib/types";
 import Skall from "@/components/Skall";
@@ -76,13 +77,27 @@ function SyncSeksjon() {
   );
 }
 
+function erEkteResultat(k: Match): boolean {
+  return (
+    k.resultat != null &&
+    typeof k.resultat === "object" &&
+    typeof k.resultat.hjemme === "number" &&
+    typeof k.resultat.borte === "number"
+  );
+}
+
 function SeedSeksjon({ kamper }: { kamper: Match[] }) {
-  const [åpen, setÅpen] = useState(false);
+  const [åpenTilbakestill, setÅpenTilbakestill] = useState(false);
+  const [åpenNullstill, setÅpenNullstill] = useState(false);
+  const [visDebug, setVisDebug] = useState(false);
   const tilstede = kamper.length;
   const trenger = 72;
-  const harResultater = kamper.filter((k) => k.resultat).length;
   const ferdig = tilstede >= trenger;
   const trengerSeed = !ferdig;
+
+  const medResultat = kamper.filter(erEkteResultat);
+  const nå = Date.now();
+  const fremtidigeMedResultat = medResultat.filter((k) => k.starttid > nå);
 
   return (
     <section
@@ -98,40 +113,171 @@ function SeedSeksjon({ kamper }: { kamper: Match[] }) {
             {trengerSeed ? "⚠" : "✓"} VM-kamper i databasen
           </h2>
           <p className="text-xs text-muted mt-0.5">
-            {tilstede}/{trenger} kamper · {harResultater} har resultat fra
-            sync.
+            {tilstede}/{trenger} kamper · {medResultat.length} med resultat.
           </p>
-          {!trengerSeed && (
+          {fremtidigeMedResultat.length > 0 && (
+            <p className="text-[11px] text-warning mt-1.5">
+              ⚠ {fremtidigeMedResultat.length} kamper som ikke har startet
+              ennå har resultat — sannsynligvis testdata.{" "}
+              <button
+                onClick={() => setVisDebug((v) => !v)}
+                className="underline hover:text-text"
+              >
+                {visDebug ? "skjul" : "vis"}
+              </button>
+            </p>
+          )}
+          {!trengerSeed && fremtidigeMedResultat.length === 0 && (
             <p className="text-[11px] text-muted mt-1.5">
-              Kampene styres normalt av auto-sync. Bare bruk knappen hvis du
-              må tilbakestille til ren tilstand.
+              Kampene styres av auto-sync. Bare bruk knappene hvis du må
+              rydde manuelt.
             </p>
           )}
         </div>
-        {trengerSeed ? (
+        {trengerSeed && (
           <button
-            onClick={() => setÅpen(true)}
+            onClick={() => setÅpenTilbakestill(true)}
             className="h-10 px-4 rounded-xl bg-primary text-primaryFg text-sm font-semibold hover:bg-primaryDark whitespace-nowrap"
           >
             Seed VM-kamper
           </button>
-        ) : (
-          <button
-            onClick={() => setÅpen(true)}
-            className="h-10 px-4 rounded-xl bg-danger/10 border border-danger/30 text-danger text-sm font-semibold hover:bg-danger/15 whitespace-nowrap"
-          >
-            Tilbakestill
-          </button>
         )}
       </div>
 
-      {åpen && (
+      {visDebug && fremtidigeMedResultat.length > 0 && (
+        <div className="mt-3 bg-elevated border border-border rounded-xl p-3 max-h-48 overflow-y-auto text-xs space-y-1 font-mono">
+          {fremtidigeMedResultat.map((k) => (
+            <div key={k.id} className="flex justify-between">
+              <span>
+                {k.id}: {k.hjemmelag} vs {k.bortelag}
+              </span>
+              <span className="text-warning">
+                {k.resultat?.hjemme}–{k.resultat?.borte}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {!trengerSeed && (
+        <div className="mt-3 flex gap-2">
+          <button
+            onClick={() => setÅpenNullstill(true)}
+            disabled={medResultat.length === 0}
+            className="flex-1 h-9 px-3 rounded-lg bg-warning/10 border border-warning/30 text-warning text-xs font-semibold hover:bg-warning/15 disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            Nullstill resultater
+          </button>
+          <button
+            onClick={() => setÅpenTilbakestill(true)}
+            className="flex-1 h-9 px-3 rounded-lg bg-danger/10 border border-danger/30 text-danger text-xs font-semibold hover:bg-danger/15"
+          >
+            Tilbakestill alt
+          </button>
+        </div>
+      )}
+
+      {åpenTilbakestill && (
         <TilbakestillModal
-          harResultater={harResultater}
-          onAvbryt={() => setÅpen(false)}
+          harResultater={medResultat.length}
+          onAvbryt={() => setÅpenTilbakestill(false)}
+        />
+      )}
+      {åpenNullstill && (
+        <NullstillModal
+          antall={medResultat.length}
+          onAvbryt={() => setÅpenNullstill(false)}
         />
       )}
     </section>
+  );
+}
+
+function NullstillModal({
+  antall,
+  onAvbryt,
+}: {
+  antall: number;
+  onAvbryt: () => void;
+}) {
+  const [bekreft, setBekreft] = useState("");
+  const [laster, setLaster] = useState(false);
+  const [feil, setFeil] = useState<string | null>(null);
+  const KODEORD = "NULLSTILL";
+  const kanKjøre = bekreft.trim() === KODEORD;
+
+  async function utfør() {
+    if (!kanKjøre) return;
+    setLaster(true);
+    setFeil(null);
+    try {
+      await nullstillAlleResultater();
+      onAvbryt();
+    } catch (e: any) {
+      setFeil(e?.message || "Nullstilling feilet.");
+      setLaster(false);
+    }
+  }
+
+  return (
+    <div
+      className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center px-4"
+      onClick={onAvbryt}
+    >
+      <div
+        className="bg-surface border border-border rounded-2xl p-5 w-full max-w-sm space-y-4"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div>
+          <div className="text-3xl mb-2">🧹</div>
+          <h3 className="text-lg font-semibold">Nullstill alle resultater?</h3>
+          <p className="text-sm text-muted mt-1">
+            Sletter <span className="text-warning font-semibold">{antall}</span>{" "}
+            kampresultat. Lag, datoer og runder beholdes. Auto-sync vil legge
+            inn resultater igjen etterhvert som kamper spilles.
+          </p>
+        </div>
+
+        <div>
+          <label className="block text-xs text-muted mb-1.5">
+            Skriv{" "}
+            <span className="text-text font-bold tracking-wide">{KODEORD}</span>{" "}
+            for å bekrefte:
+          </label>
+          <input
+            type="text"
+            value={bekreft}
+            onChange={(e) => setBekreft(e.target.value)}
+            autoFocus
+            placeholder={KODEORD}
+            className="w-full h-11 px-3 rounded-xl bg-elevated border border-border focus:border-warning focus:outline-none focus:ring-2 focus:ring-warning/20 font-mono tracking-wide"
+          />
+        </div>
+
+        {feil && (
+          <div className="text-sm text-danger bg-danger/10 border border-danger/30 rounded-xl px-3 py-2">
+            {feil}
+          </div>
+        )}
+
+        <div className="flex gap-2">
+          <button
+            onClick={onAvbryt}
+            disabled={laster}
+            className="flex-1 h-11 rounded-xl border border-border bg-elevated text-sm font-semibold hover:border-primary transition disabled:opacity-50"
+          >
+            Avbryt
+          </button>
+          <button
+            onClick={utfør}
+            disabled={!kanKjøre || laster}
+            className="flex-1 h-11 rounded-xl bg-warning text-white text-sm font-semibold hover:bg-warning/90 transition disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            {laster ? "Nullstiller…" : "Nullstill resultater"}
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }
 

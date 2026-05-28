@@ -203,6 +203,24 @@ export async function lagreFasit(f: Fasit) {
  * localStorage. Idempotent — kan kjøres flere ganger uten å lage duplikater,
  * men overskriver hvis admin har endret en kamp manuelt.
  */
+/**
+ * Setter resultat = null på alle kamper. Mindre destruktivt enn full
+ * reseed — bevarer starttid, lag og runde, men tømmer fasit.
+ */
+export async function nullstillAlleResultater(): Promise<number> {
+  if (bruker()) {
+    const db = fbDb();
+    const snap = await getDocs(collection(db, "kamper"));
+    await Promise.all(
+      snap.docs.map((d) => updateDoc(d.ref, { resultat: null })),
+    );
+    return snap.size;
+  }
+  const kamper = localKamper.get();
+  localKamper.set(kamper.map((k) => ({ ...k, resultat: null })));
+  return kamper.length;
+}
+
 export async function seedAlleKamper(): Promise<number> {
   const kamper = alleGruppekamper();
   if (bruker()) {
