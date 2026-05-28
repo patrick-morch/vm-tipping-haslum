@@ -61,6 +61,19 @@ service cloud.firestore {
         || erAdmin();
     }
 
+    // Gruppe-tipps: eier skriver egne frem til VM-start (samme lås
+    // som spesialtips siden begge handler om gruppespill).
+    match /gruppetips/{tipId} {
+      allow read: if erInnlogget();
+      allow create: if erInnlogget()
+        && request.resource.data.uid == request.auth.uid
+        && spesialAapen();
+      allow update: if resource.data.uid == request.auth.uid
+        && spesialAapen();
+      allow delete: if (resource.data.uid == request.auth.uid && spesialAapen())
+        || erAdmin();
+    }
+
     // Spesialtips: alle kan lese (for ledertavle), eier skriver egen
     // frem til 1 time før VM-start.
     match /spesialtips/{uid} {

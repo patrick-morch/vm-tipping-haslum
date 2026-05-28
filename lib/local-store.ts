@@ -3,6 +3,7 @@
 import {
   Bruker,
   Fasit,
+  GruppeTip,
   Match,
   Prediction,
   SpesialTip,
@@ -61,6 +62,10 @@ const SEED_VERSJON = 3;
 export const localBrukere = new Store<Record<string, Bruker>>("vmt.brukere", {});
 export const localKamper = new Store<Match[]>("vmt.kamper", []);
 export const localTips = new Store<Record<string, Prediction>>("vmt.tips", {});
+export const localGruppeTips = new Store<Record<string, GruppeTip>>(
+  "vmt.gruppetips",
+  {},
+);
 export const localSpesialTips = new Store<Record<string, SpesialTip>>(
   "vmt.spesialtips",
   {},

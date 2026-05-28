@@ -1,13 +1,22 @@
 "use client";
 
-import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useAuth } from "@/lib/auth-context";
-import { useKamper, useMineTips, lagreTip, slettTip } from "@/lib/data";
-import { GRUPPER, NORGE, erNorgeKamp, kampErLåst } from "@/lib/vm-data";
-import { beregnTabell, kamperMedMineTips } from "@/lib/standings";
-import { Match, Prediction } from "@/lib/types";
+import {
+  useKamper,
+  useMineGruppeTips,
+  lagreGruppeTip,
+} from "@/lib/data";
+import {
+  GRUPPER,
+  NORGE,
+  erNorgeKamp,
+  spesialErLåst,
+  SPESIAL_LÅS_TID,
+} from "@/lib/vm-data";
+import { beregnTabell } from "@/lib/standings";
+import { Match } from "@/lib/types";
 import Skall from "@/components/Skall";
 import Beskytt from "@/components/Beskytt";
 
@@ -28,7 +37,13 @@ function GruppeDetalj() {
   const gruppe = GRUPPER.find((g) => g.id === gruppeId);
   const { user, bruker } = useAuth();
   const alleKamper = useKamper();
-  const tips = useMineTips(user?.uid);
+  const gruppeTips = useMineGruppeTips(user?.uid);
+
+  const [låst, setLåst] = useState(() => spesialErLåst());
+  useEffect(() => {
+    const t = setInterval(() => setLåst(spesialErLåst()), 30_000);
+    return () => clearInterval(t);
+  }, []);
 
   if (!gruppe) {
     return (
@@ -50,24 +65,20 @@ function GruppeDetalj() {
     .filter((k) => k.runde === `Gruppe ${gruppe.id}`)
     .sort((a, b) => a.starttid - b.starttid);
 
-  const tabell = beregnTabell(gruppe.lag, kamperMedMineTips(kamper, tips));
+  // ACTUAL standings basert på reelle resultater (ikke tipps)
+  const tabell = beregnTabell(gruppe.lag, kamper);
   const harNorge = gruppe.lag.includes(NORGE);
+  const mittTip = gruppeTips[gruppe.id];
 
-  async function lagre(matchId: string, h: number, b: number) {
-    if (!user || !bruker) return;
-    await lagreTip({
-      matchId,
+  async function lagre(vinner: string, toer: string) {
+    if (!user || !bruker || låst || !gruppe) return;
+    await lagreGruppeTip({
       uid: user.uid,
-      navn: bruker.navn,
-      hjemme: h,
-      borte: b,
+      gruppe: gruppe.id,
+      vinner,
+      toer,
       lagretTid: Date.now(),
     });
-  }
-
-  async function slett(matchId: string) {
-    if (!user) return;
-    await slettTip(matchId, user.uid);
   }
 
   return (
@@ -85,13 +96,11 @@ function GruppeDetalj() {
             Gruppe {gruppe.id}
             {harNorge && (
               <span className="px-2 py-0.5 rounded-full bg-norge/15 text-norge text-[10px] font-bold">
-                NORGE ×2
+                NORGE
               </span>
             )}
           </h1>
-          <p className="text-muted text-xs">
-            Tippet tabell — oppdaterer seg automatisk
-          </p>
+          <p className="text-muted text-xs">Faktisk tabell</p>
         </div>
       </div>
 
@@ -141,78 +150,141 @@ function GruppeDetalj() {
         ))}
       </div>
 
-      <div className="text-xs text-muted px-1">
-        <span className="text-success font-semibold">1</span> og{" "}
-        <span className="text-accent font-semibold">2</span> går direkte videre ·{" "}
-        <span className="text-muted font-semibold">3</span> har sjanse som beste
-        treer
-      </div>
+      <TippeBoks
+        lag={gruppe.lag}
+        tip={mittTip}
+        låst={låst}
+        låsTid={SPESIAL_LÅS_TID}
+        onLagre={lagre}
+      />
 
-      <div className="space-y-3">
+      <div className="space-y-2">
         <h2 className="font-semibold text-sm uppercase tracking-wider text-muted">
           Kamper
         </h2>
-        {kamper.map((kamp) => (
-          <KampRad
-            key={kamp.id}
-            kamp={kamp}
-            tip={tips[kamp.id]}
-            onLagre={(h, b) => lagre(kamp.id, h, b)}
-            onSlett={() => slett(kamp.id)}
-          />
+        {kamper.map((k) => (
+          <KampInfo key={k.id} kamp={k} />
         ))}
       </div>
     </div>
   );
 }
 
-function KampRad({
-  kamp,
+function TippeBoks({
+  lag,
   tip,
+  låst,
+  låsTid,
   onLagre,
-  onSlett,
 }: {
-  kamp: Match;
-  tip?: Prediction;
-  onLagre: (h: number, b: number) => Promise<void>;
-  onSlett: () => Promise<void>;
+  lag: string[];
+  tip?: { vinner: string; toer: string };
+  låst: boolean;
+  låsTid: number;
+  onLagre: (vinner: string, toer: string) => Promise<void>;
 }) {
-  const [hjem, setHjem] = useState(tip ? String(tip.hjemme) : "");
-  const [bort, setBort] = useState(tip ? String(tip.borte) : "");
+  const [vinner, setVinner] = useState(tip?.vinner || "");
+  const [toer, setToer] = useState(tip?.toer || "");
+  const [lagret, setLagret] = useState(false);
+
   useEffect(() => {
-    if (tip) {
-      setHjem(String(tip.hjemme));
-      setBort(String(tip.borte));
-    } else {
-      setHjem("");
-      setBort("");
-    }
+    setVinner(tip?.vinner || "");
+    setToer(tip?.toer || "");
   }, [tip]);
 
-  const låst = kampErLåst(kamp);
-  const gyldig = hjem !== "" && bort !== "" && Number(hjem) >= 0 && Number(bort) >= 0;
-  const tom = hjem === "" && bort === "";
-  const erNorge = erNorgeKamp(kamp);
-  const uendret =
-    tip && gyldig && Number(hjem) === tip.hjemme && Number(bort) === tip.borte;
+  const gyldig = vinner && toer && vinner !== toer;
+  const endret =
+    gyldig && (tip?.vinner !== vinner || tip?.toer !== toer);
 
   useEffect(() => {
-    if (låst || uendret) return;
-    if (gyldig) {
-      const t = setTimeout(() => {
-        onLagre(Number(hjem), Number(bort));
-      }, 500);
-      return () => clearTimeout(t);
-    }
-    if (tom && tip) {
-      const t = setTimeout(() => {
-        onSlett();
-      }, 500);
-      return () => clearTimeout(t);
-    }
+    if (låst || !endret) return;
+    const t = setTimeout(async () => {
+      await onLagre(vinner, toer);
+      setLagret(true);
+      setTimeout(() => setLagret(false), 1500);
+    }, 500);
+    return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hjem, bort, gyldig, tom, uendret, låst, Boolean(tip)]);
+  }, [vinner, toer, endret, låst]);
 
+  const låsTekst = new Date(låsTid).toLocaleString("nb-NO", {
+    day: "2-digit",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+
+  return (
+    <div className="bg-surface border border-border rounded-2xl p-4 space-y-3">
+      <div className="flex items-center justify-between">
+        <div>
+          <h3 className="font-semibold">Mitt tipp</h3>
+          <p className="text-xs text-muted">
+            {låst
+              ? "Tippet er låst — VM har startet."
+              : `Kan endres til ${låsTekst}.`}
+          </p>
+        </div>
+        {lagret && (
+          <span className="text-xs text-success font-semibold">✓ Lagret</span>
+        )}
+      </div>
+
+      <fieldset disabled={låst} className="space-y-3">
+        <div>
+          <div className="flex items-center justify-between text-xs text-muted mb-1.5">
+            <span>Vinner</span>
+            <span className="text-success font-semibold">5 poeng</span>
+          </div>
+          <div className="grid grid-cols-2 gap-1.5">
+            {lag.map((l) => (
+              <button
+                key={l}
+                type="button"
+                onClick={() => {
+                  setVinner(l);
+                  if (toer === l) setToer("");
+                }}
+                className={`h-10 px-2 rounded-lg text-sm border transition disabled:opacity-50 ${
+                  vinner === l
+                    ? "bg-success border-success text-white font-semibold"
+                    : "bg-elevated border-border hover:border-success/50"
+                }`}
+              >
+                {l}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div>
+          <div className="flex items-center justify-between text-xs text-muted mb-1.5">
+            <span>2.-plass</span>
+            <span className="text-accent font-semibold">3 poeng</span>
+          </div>
+          <div className="grid grid-cols-2 gap-1.5">
+            {lag.map((l) => (
+              <button
+                key={l}
+                type="button"
+                disabled={l === vinner}
+                onClick={() => setToer(l)}
+                className={`h-10 px-2 rounded-lg text-sm border transition disabled:opacity-30 disabled:cursor-not-allowed ${
+                  toer === l
+                    ? "bg-accent border-accent text-white font-semibold"
+                    : "bg-elevated border-border hover:border-accent/50"
+                }`}
+              >
+                {l}
+              </button>
+            ))}
+          </div>
+        </div>
+      </fieldset>
+    </div>
+  );
+}
+
+function KampInfo({ kamp }: { kamp: Match }) {
   const dato = new Date(kamp.starttid);
   const datoStr = dato.toLocaleDateString("nb-NO", {
     weekday: "short",
@@ -223,73 +295,41 @@ function KampRad({
     hour: "2-digit",
     minute: "2-digit",
   });
+  const ferdig = Boolean(kamp.resultat);
 
   return (
     <div
       className={`bg-surface border rounded-2xl p-3 ${
-        erNorge ? "border-norge/40" : "border-border"
+        erNorgeKamp(kamp) ? "border-norge/40" : "border-border"
       }`}
     >
       <div className="flex items-center justify-between text-[11px] text-muted mb-2">
-        <div className="flex items-center gap-2">
-          <span>
-            {datoStr} · {klokke}
-          </span>
-          {kamp.bonusFaktor > 1 && (
-            <span className="px-1.5 py-0.5 rounded-full bg-norge/15 text-norge font-bold text-[9px]">
-              ×{kamp.bonusFaktor}
-            </span>
-          )}
-        </div>
-        {låst && kamp.resultat && (
-          <span className="text-text font-semibold">
-            {kamp.resultat.hjemme}–{kamp.resultat.borte}
-          </span>
+        <span>
+          {datoStr} · {klokke}
+        </span>
+        {ferdig ? (
+          <span className="text-success font-semibold">Ferdig</span>
+        ) : (
+          <span>Kommer</span>
         )}
       </div>
       <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
         <div className="text-right font-medium text-sm truncate">
           {kamp.hjemmelag}
         </div>
-        <div className="flex items-center gap-1.5">
-          <ScoreIn verdi={hjem} onChange={setHjem} låst={låst} />
-          <span className="text-muted text-xs">–</span>
-          <ScoreIn verdi={bort} onChange={setBort} låst={låst} />
+        <div className="flex items-center gap-2 font-bold text-lg tabular-nums">
+          <span className={ferdig ? "text-text" : "text-muted"}>
+            {ferdig ? kamp.resultat!.hjemme : "–"}
+          </span>
+          <span className="text-muted">:</span>
+          <span className={ferdig ? "text-text" : "text-muted"}>
+            {ferdig ? kamp.resultat!.borte : "–"}
+          </span>
         </div>
         <div className="text-left font-medium text-sm truncate">
           {kamp.bortelag}
         </div>
       </div>
-      {låst && (
-        <div className="mt-2 flex items-center justify-end">
-          <span className="text-[10px] text-muted">Låst</span>
-        </div>
-      )}
     </div>
-  );
-}
-
-function ScoreIn({
-  verdi,
-  onChange,
-  låst,
-}: {
-  verdi: string;
-  onChange: (v: string) => void;
-  låst: boolean;
-}) {
-  return (
-    <input
-      type="number"
-      inputMode="numeric"
-      min={0}
-      max={20}
-      disabled={låst}
-      value={verdi}
-      onChange={(e) =>
-        onChange(e.target.value.replace(/[^0-9]/g, "").slice(0, 2))
-      }
-      className="w-11 h-10 text-center text-lg font-bold rounded-lg bg-elevated border border-border focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 disabled:opacity-60"
-    />
   );
 }

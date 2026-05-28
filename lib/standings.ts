@@ -37,7 +37,7 @@ export function beregnTabell(
   kamper: {
     hjemmelag: string;
     bortelag: string;
-    resultat: { hjemme: number; borte: number } | null | undefined;
+    resultat?: { hjemme: number; borte: number } | null;
   }[],
 ): StandingMedPosisjon[] {
   const map = new Map<string, Standing>();

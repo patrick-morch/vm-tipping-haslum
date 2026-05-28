@@ -2,11 +2,11 @@
 
 import Link from "next/link";
 import { useSearchParams, useRouter } from "next/navigation";
-import { useMemo, Suspense } from "react";
+import { Suspense } from "react";
 import { useAuth } from "@/lib/auth-context";
-import { useKamper, useMineTips } from "@/lib/data";
+import { useKamper, useMineGruppeTips } from "@/lib/data";
 import { GRUPPER, NORGE } from "@/lib/vm-data";
-import { beregnTabell, kamperMedMineTips } from "@/lib/standings";
+import { beregnTabell } from "@/lib/standings";
 import Skall from "@/components/Skall";
 import Beskytt from "@/components/Beskytt";
 
@@ -32,8 +32,8 @@ function Sluttspill() {
       <div>
         <h1 className="text-2xl font-semibold">Sluttspill</h1>
         <p className="text-muted text-sm">
-          Tipp resultatene i gruppespillet — tabellen oppdaterer seg
-          automatisk.
+          Tipp gruppevinner og 2.-plass. Knockout-kamper kan tippes etter 27.
+          juni.
         </p>
       </div>
 
@@ -68,18 +68,17 @@ function Sluttspill() {
 function GrupperFane() {
   const { user } = useAuth();
   const kamper = useKamper();
-  const tips = useMineTips(user?.uid);
+  const mineTipps = useMineGruppeTips(user?.uid);
 
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
       {GRUPPER.map((g) => {
-        const gruppeKamper = kamper.filter((k) => k.runde === `Gruppe ${g.id}`);
-        const tabell = beregnTabell(
-          g.lag,
-          kamperMedMineTips(gruppeKamper, tips),
+        const gruppeKamper = kamper.filter(
+          (k) => k.runde === `Gruppe ${g.id}`,
         );
-        const tippet = gruppeKamper.filter((k) => tips[k.id]).length;
+        const tabell = beregnTabell(g.lag, gruppeKamper);
         const harNorge = g.lag.includes(NORGE);
+        const tip = mineTipps[g.id];
         return (
           <Link
             key={g.id}
@@ -100,7 +99,13 @@ function GrupperFane() {
                   </span>
                 )}
               </div>
-              <span className="text-[10px] text-muted">{tippet}/6 tippet</span>
+              <span
+                className={`text-[10px] font-semibold ${
+                  tip ? "text-success" : "text-muted"
+                }`}
+              >
+                {tip ? "Tippet" : "Ikke tippet"}
+              </span>
             </div>
             <div className="space-y-1">
               {tabell.map((s) => (
@@ -141,18 +146,15 @@ function GrupperFane() {
 }
 
 function KnockoutFane() {
-  // 2026: 32 lag i sluttspill (top 2 + 8 beste 3.-plass)
-  // Layout: 16 kamp-spor i runde 1. Hver påfølgende runde dobler antall
-  // grid-rader per kamp så pairs aligner perfekt.
   const SPOR = 16;
   const RAD_PX = 52;
 
   const runder = [
-    { id: "32del", navn: "Sekstendedels", kort: "Sekstendedels", kamper: 16 },
-    { id: "16del", navn: "Åttendedels", kort: "Åttendedels", kamper: 8 },
-    { id: "kvart", navn: "Kvartfinale", kort: "Kvart", kamper: 4 },
-    { id: "semi", navn: "Semifinale", kort: "Semi", kamper: 2 },
-    { id: "finale", navn: "Finale", kort: "Finale", kamper: 1 },
+    { id: "32del", kort: "Sekstendedels", kamper: 16 },
+    { id: "16del", kort: "Åttendedels", kamper: 8 },
+    { id: "kvart", kort: "Kvart", kamper: 4 },
+    { id: "semi", kort: "Semi", kamper: 2 },
+    { id: "finale", kort: "Finale", kamper: 1 },
   ];
 
   return (
@@ -208,9 +210,10 @@ function KnockoutFane() {
         </div>
       </div>
       <div className="bg-surface border border-border rounded-2xl p-3 text-center text-xs text-muted">
-        Lagene fylles inn automatisk når gruppespillet er ferdig 27. juni.{" "}
-        <Link href="/spesial" className="text-primary font-semibold">
-          Tipp VM-vinner her
+        Knockout-kampene fylles inn automatisk når gruppespillet er ferdig 27.
+        juni. Hver kamp blir tippbar på{" "}
+        <Link href="/kamper" className="text-primary font-semibold">
+          Kamper
         </Link>
         .
       </div>
