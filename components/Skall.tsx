@@ -37,11 +37,9 @@ export default function Skall({ children }: { children: ReactNode }) {
       <header className="sticky top-0 z-10 bg-bg/85 backdrop-blur border-b border-border">
         <div className="max-w-[480px] mx-auto px-4 py-3 flex items-center justify-between">
           <Link href="/kamper" className="flex items-center gap-2">
-            <img
-              src="/haslum-logo.jpg"
-              alt="Haslum IL"
-              className="w-8 h-8 rounded-lg object-cover"
-            />
+            <div className="w-8 h-8 rounded-lg bg-norge text-white flex items-center justify-center font-bold text-[10px] tracking-wider">
+              HIL
+            </div>
             <span className="font-semibold">VM-tipping</span>
           </Link>
           <div className="flex items-center gap-2">

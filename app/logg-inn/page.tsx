@@ -78,11 +78,9 @@ export default function LoggInn() {
     <div className="min-h-screen flex items-center justify-center px-4">
       <div className="w-full max-w-sm">
         <div className="flex flex-col items-center gap-3 mb-8">
-          <img
-            src="/haslum-logo.jpg"
-            alt="Haslum IL"
-            className="w-20 h-20 rounded-2xl object-cover shadow-card"
-          />
+          <div className="w-20 h-20 rounded-2xl bg-norge text-white flex items-center justify-center font-bold text-2xl tracking-wider shadow-card">
+            HIL
+          </div>
           <div className="text-center">
             <div className="text-xl font-bold leading-tight">VM-tipping</div>
             <div className="text-[11px] text-muted uppercase tracking-[0.15em] font-semibold">
