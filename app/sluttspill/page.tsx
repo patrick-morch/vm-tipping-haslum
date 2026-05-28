@@ -9,6 +9,7 @@ import { GRUPPER, NORGE, flagg, kortLagNavn } from "@/lib/vm-data";
 import { beregnTabell, kamperMedMineTips } from "@/lib/standings";
 import Skall from "@/components/Skall";
 import Beskytt from "@/components/Beskytt";
+import SideHeader from "@/components/SideHeader";
 
 export default function SluttspillSide() {
   return (
@@ -29,12 +30,14 @@ function Sluttspill() {
 
   return (
     <div className="space-y-4">
-      <div>
-        <h1 className="text-2xl font-semibold">Sluttspill</h1>
-        <p className="text-muted text-sm">
-          Tipp resultatene — tabellen oppdaterer seg automatisk.
-        </p>
-      </div>
+      <SideHeader
+        tittel="Sluttspill"
+        undertittel={
+          fane === "grupper"
+            ? "Tipp resultater — tabellen oppdaterer seg"
+            : "Knockout-runder fra 28. juni"
+        }
+      />
 
       <div className="grid grid-cols-2 gap-1.5 bg-surface border border-border rounded-2xl p-1.5">
         <button

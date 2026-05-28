@@ -9,6 +9,7 @@ import {
 } from "@/lib/data";
 import Skall from "@/components/Skall";
 import Beskytt from "@/components/Beskytt";
+import SideHeader from "@/components/SideHeader";
 
 export default function LedertavleSide() {
   return (
@@ -85,37 +86,17 @@ function Ledertavle() {
 
   return (
     <div className="space-y-5">
-      <div className="relative overflow-hidden rounded-3xl border border-border bg-gradient-to-br from-surface to-elevated/40 px-5 py-4">
-        {/* Subtil glow */}
-        <div className="absolute -top-12 -right-12 w-40 h-40 rounded-full bg-norge/8 blur-3xl pointer-events-none" />
-        {/* Stor faded logo i bakgrunnen */}
-        <img
-          src="/haslum-logo.jpeg"
-          alt=""
-          aria-hidden
-          className="absolute -right-6 -bottom-10 w-44 h-44 object-contain opacity-[0.06] pointer-events-none"
-        />
-
-        <div className="relative flex items-center gap-3">
-          <img
-            src="/haslum-logo.jpeg"
-            alt="Haslum IL"
-            className="w-14 h-14 object-contain flex-shrink-0"
-          />
-          <div className="min-w-0">
-            <div className="text-[10px] uppercase tracking-[0.18em] font-bold text-norge/80">
-              Haslum IL · VM 2026
-            </div>
-            <h1 className="text-2xl font-semibold leading-tight">Ledertavle</h1>
-            <p className="text-muted text-xs mt-0.5">
-              {aggregert
-                ? `${aggregert.kamperSpilt}/${aggregert.kamperTotalt} kamper spilt`
-                : `${rader.length} medlemmer`}
-              {oppdatert && <span className="ml-1">· oppdatert {oppdatert}</span>}
-            </p>
-          </div>
-        </div>
-      </div>
+      <SideHeader
+        tittel="Ledertavle"
+        undertittel={
+          <>
+            {aggregert
+              ? `${aggregert.kamperSpilt}/${aggregert.kamperTotalt} kamper spilt`
+              : `${rader.length} medlemmer`}
+            {oppdatert && <span className="ml-1">· oppdatert {oppdatert}</span>}
+          </>
+        }
+      />
 
       {!aggregert && !demoModus && (
         <div className="bg-warning/10 border border-warning/30 text-warning text-xs rounded-2xl px-3 py-2.5 flex items-center gap-2">

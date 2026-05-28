@@ -13,6 +13,7 @@ import {
 } from "@/lib/vm-data";
 import Skall from "@/components/Skall";
 import Beskytt from "@/components/Beskytt";
+import SideHeader from "@/components/SideHeader";
 
 const ANTALL = 5;
 
@@ -70,6 +71,14 @@ function Kamper() {
 
   return (
     <div className="space-y-5">
+      <SideHeader
+        tittel="Neste kamper"
+        undertittel={
+          neste.length === 0
+            ? "Ingen åpne kamper"
+            : `${neste.length} kommende · ${utenTip} ikke tippet`
+        }
+      />
       {neste[0] && <Countdown kamp={neste[0]} nå={nå} utenTip={utenTip} />}
 
       {neste.length === 0 && (

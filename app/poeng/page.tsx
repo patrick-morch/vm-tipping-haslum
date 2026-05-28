@@ -2,6 +2,7 @@
 
 import Skall from "@/components/Skall";
 import Beskytt from "@/components/Beskytt";
+import SideHeader from "@/components/SideHeader";
 
 export default function PoengSide() {
   return (
@@ -16,12 +17,10 @@ export default function PoengSide() {
 function Poeng() {
   return (
     <div className="space-y-5">
-      <div>
-        <h1 className="text-2xl font-semibold">Poeng & regler</h1>
-        <p className="text-muted text-sm">
-          Sånn samler du poeng. Kort og konsist.
-        </p>
-      </div>
+      <SideHeader
+        tittel="Poeng & regler"
+        undertittel="Sånn samler du poeng. Kort og konsist."
+      />
 
       <Kort tema="success">
         <KortHeader ikon="⚽" tag="KAMPRESULTAT" tema="success">
