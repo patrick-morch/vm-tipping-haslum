@@ -199,7 +199,50 @@ async function syncResultater() {
     }
   }
 
+  // Etter alle oppdateringer: sjekk om finalen er ferdig og sett vmVinner
+  // automatisk i fasit-dokumentet hvis ikke allerede satt.
+  await oppdaterVmVinner(db);
+
   return { oppdatert: oppdatertResultat, opprettet: opprettetKnockout };
+}
+
+async function oppdaterVmVinner(db) {
+  const finalerSnap = await db
+    .collection("kamper")
+    .where("runde", "==", "Finale")
+    .get();
+
+  if (finalerSnap.empty) return;
+
+  // Det er normalt bare én Finale-kamp, men ta uansett en med resultat
+  const finale = finalerSnap.docs
+    .map((d) => d.data())
+    .find((k) => k.resultat != null);
+
+  if (!finale) return;
+
+  const { hjemme, borte } = finale.resultat;
+  let vinner = null;
+  if (hjemme > borte) vinner = finale.hjemmelag;
+  else if (borte > hjemme) vinner = finale.bortelag;
+  // Uavgjort i finale → vent på straffespark-resultat (vi har ikke
+  // data om det, så lar fasit stå tom til admin oppdaterer manuelt)
+
+  if (!vinner) {
+    console.log(
+      "  ! Finale uavgjort etter sluttspill — venter på straffespark-data",
+    );
+    return;
+  }
+
+  const fasitRef = db.collection("fasit").doc("vm");
+  const eks = await fasitRef.get();
+  const nåværende = eks.exists ? eks.data() : {};
+
+  if (nåværende.vmVinner === vinner) return; // ingen endring
+
+  await fasitRef.set({ ...nåværende, vmVinner: vinner }, { merge: true });
+  console.log(`  ✓ Satt fasit.vmVinner = ${vinner}`);
 }
 
 const r = await syncResultater();
