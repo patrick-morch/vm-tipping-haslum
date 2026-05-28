@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useAuth } from "@/lib/auth-context";
 import { lagreSpesialTip, useMittSpesialTip } from "@/lib/data";
 import {
+  flagg,
   GRUPPER,
   POENG,
   SPESIAL_LÅS_TID,
@@ -76,136 +77,229 @@ function Spesial() {
     return () => clearTimeout(t);
   }, [vmVinner, toppscorer, toppassist, user, lagret, låst]);
 
+  const tippet = [vmVinner, toppscorer, toppassist].filter(Boolean).length;
   const låsTekst = new Date(SPESIAL_LÅS_TID).toLocaleString("nb-NO", {
-    weekday: "long",
     day: "2-digit",
-    month: "long",
+    month: "short",
     hour: "2-digit",
     minute: "2-digit",
   });
 
   return (
-    <div className="space-y-4">
-      <div>
-        <h1 className="text-2xl font-semibold">Spesialtips</h1>
-        <p className="text-muted text-sm">
-          {låst
-            ? "Spesialtipsene er låst — VM har begynt."
-            : `Kan endres frem til ${låsTekst}.`}
-        </p>
+    <div className="space-y-5">
+      <div className="flex items-end justify-between">
+        <div>
+          <h1 className="text-2xl font-semibold">Spesialtips</h1>
+          <p className="text-muted text-sm">
+            {låst ? "Låst" : `Stenger ${låsTekst}`}
+          </p>
+        </div>
+        <div className="flex gap-1">
+          {[0, 1, 2].map((i) => (
+            <div
+              key={i}
+              className={`w-2 h-2 rounded-full transition ${
+                i < tippet ? "bg-primary" : "bg-border"
+              }`}
+            />
+          ))}
+        </div>
       </div>
 
       {låst && (
-        <div className="bg-warning/10 border border-warning/30 text-warning text-sm rounded-2xl px-3 py-2.5 flex items-center gap-2">
-          🔒 Tipsene dine er låst og kan ikke endres.
+        <div className="bg-warning/10 border border-warning/30 text-warning text-sm rounded-2xl px-4 py-3 flex items-center gap-2">
+          <span className="text-lg">🔒</span>
+          Tipsene dine er låst.
         </div>
       )}
 
-      <fieldset
-        disabled={låst}
-        className={låst ? "space-y-4 opacity-70" : "space-y-4"}
-      >
-        <Boks
-          tittel="Hvem vinner VM?"
-          ikon="🏆"
-          poeng={POENG.vmVinner}
-          farge="gold"
-        >
-          <LagVelger verdi={vmVinner} onVelg={setVmVinner} disabled={låst} />
-        </Boks>
-
-        <Boks
-          tittel="Toppscorer (Gullstøvelen)"
+      <fieldset disabled={låst} className="space-y-4">
+        <VmVinnerKort verdi={vmVinner} onVelg={setVmVinner} />
+        <SpillerKort
+          tittel="Toppscorer"
+          undertittel="Gullstøvelen"
           ikon="⚽"
           poeng={POENG.toppscorer}
-          farge="primary"
-        >
-          <SpillerVelger
-            verdi={toppscorer}
-            onVelg={setToppscorer}
-            placeholder="Søk spiller, f.eks. Haaland…"
-            posFilter={["FW", "MF"]}
-          />
-        </Boks>
-
-        <Boks
+          tema="primary"
+          verdi={toppscorer}
+          onVelg={setToppscorer}
+          posFilter={["FW", "MF"]}
+        />
+        <SpillerKort
           tittel="Toppassist"
+          undertittel="Mesterspilleren"
           ikon="🎯"
           poeng={POENG.toppassist}
-          farge="primary"
-        >
-          <SpillerVelger
-            verdi={toppassist}
-            onVelg={setToppassist}
-            placeholder="Søk spiller, f.eks. Ødegaard…"
-            posFilter={["FW", "MF", "DF"]}
-          />
-        </Boks>
+          tema="accent"
+          verdi={toppassist}
+          onVelg={setToppassist}
+          posFilter={["FW", "MF", "DF"]}
+        />
       </fieldset>
     </div>
   );
 }
 
-function Boks({
-  tittel,
-  ikon,
-  poeng,
-  farge,
-  children,
+function VmVinnerKort({
+  verdi,
+  onVelg,
 }: {
-  tittel: string;
-  ikon: string;
-  poeng: number;
-  farge: "primary" | "accent" | "gold" | "danger";
-  children: React.ReactNode;
+  verdi: string;
+  onVelg: (v: string) => void;
 }) {
-  const farger = {
-    primary: "bg-primary/10 text-primary",
-    accent: "bg-accent/10 text-accent",
-    gold: "bg-gold/15 text-gold",
-    danger: "bg-danger/10 text-danger",
-  } as const;
+  const [endrer, setEndrer] = useState(!verdi);
+
+  useEffect(() => {
+    if (verdi) setEndrer(false);
+  }, [verdi]);
+
   return (
-    <div className="bg-surface border border-border rounded-2xl p-4 space-y-3">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <span className="text-lg">{ikon}</span>
-          <span className="font-semibold">{tittel}</span>
+    <div className="relative overflow-hidden rounded-3xl border border-gold/40 bg-gradient-to-br from-gold/25 via-gold/8 to-transparent p-5">
+      <div className="absolute -top-12 -right-12 w-40 h-40 rounded-full bg-gold/20 blur-3xl pointer-events-none" />
+      <div className="relative space-y-4">
+        <div className="flex items-start justify-between">
+          <div>
+            <div className="text-[10px] text-gold uppercase tracking-[0.2em] font-bold mb-1">
+              Hovedpremien
+            </div>
+            <h2 className="text-xl font-bold">Hvem vinner VM?</h2>
+          </div>
+          <span className="text-[10px] text-gold font-bold bg-gold/20 px-2.5 py-1 rounded-full whitespace-nowrap">
+            25 POENG
+          </span>
         </div>
-        <span
-          className={`text-xs font-semibold px-2 py-0.5 rounded-full ${farger[farge]}`}
-        >
-          {poeng}p
-        </span>
+
+        {verdi && !endrer ? (
+          <div className="bg-bg/40 backdrop-blur border border-gold/30 rounded-2xl p-4 flex items-center gap-4">
+            <div className="text-5xl drop-shadow-lg">🏆</div>
+            <div className="flex items-center gap-3 flex-1 min-w-0">
+              <span className="text-4xl">{flagg(verdi)}</span>
+              <div className="min-w-0">
+                <div className="text-[10px] text-muted uppercase tracking-wider font-semibold">
+                  Din vinner
+                </div>
+                <div className="text-base font-bold truncate">{verdi}</div>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => setEndrer(true)}
+              className="text-xs font-semibold text-muted hover:text-text bg-elevated px-3 py-1.5 rounded-lg border border-border"
+            >
+              Endre
+            </button>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            <div className="text-center text-5xl py-3 drop-shadow-lg">🏆</div>
+            <select
+              value={verdi}
+              onChange={(e) => onVelg(e.target.value)}
+              className="w-full h-12 px-3 rounded-xl bg-bg/40 backdrop-blur border border-gold/30 focus:border-gold focus:outline-none focus:ring-2 focus:ring-gold/30 font-semibold text-sm"
+            >
+              <option value="">Velg verdensmester…</option>
+              {ALLE_LAG.map((l) => (
+                <option key={l} value={l}>
+                  {l}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
       </div>
-      {children}
     </div>
   );
 }
 
-function LagVelger({
+function SpillerKort({
+  tittel,
+  undertittel,
+  ikon,
+  poeng,
+  tema,
   verdi,
   onVelg,
-  disabled,
+  posFilter,
 }: {
+  tittel: string;
+  undertittel: string;
+  ikon: string;
+  poeng: number;
+  tema: "primary" | "accent";
   verdi: string;
-  onVelg: (l: string) => void;
-  disabled?: boolean;
+  onVelg: (v: string) => void;
+  posFilter?: ("GK" | "DF" | "MF" | "FW")[];
 }) {
+  const [endrer, setEndrer] = useState(!verdi);
+
+  useEffect(() => {
+    if (verdi) setEndrer(false);
+  }, [verdi]);
+
+  const fargeKlasse =
+    tema === "primary"
+      ? "border-primary/30 from-primary/15 to-transparent"
+      : "border-accent/30 from-accent/15 to-transparent";
+  const ikonBg = tema === "primary" ? "bg-primary/20" : "bg-accent/20";
+  const tagFarge =
+    tema === "primary"
+      ? "text-primary bg-primary/15"
+      : "text-accent bg-accent/15";
+
   return (
-    <select
-      value={verdi}
-      onChange={(e) => onVelg(e.target.value)}
-      disabled={disabled}
-      className="w-full h-11 px-3 rounded-xl bg-elevated border border-border focus:border-primary focus:outline-none disabled:cursor-not-allowed"
+    <div
+      className={`relative overflow-hidden rounded-3xl border bg-gradient-to-br p-5 ${fargeKlasse}`}
     >
-      <option value="">Velg lag…</option>
-      {ALLE_LAG.map((l) => (
-        <option key={l} value={l}>
-          {l}
-        </option>
-      ))}
-    </select>
+      <div className="relative space-y-4">
+        <div className="flex items-start justify-between">
+          <div className="flex items-start gap-3">
+            <div
+              className={`w-12 h-12 rounded-2xl ${ikonBg} flex items-center justify-center text-2xl`}
+            >
+              {ikon}
+            </div>
+            <div>
+              <h3 className="text-lg font-bold leading-tight">{tittel}</h3>
+              <p className="text-[11px] text-muted">{undertittel}</p>
+            </div>
+          </div>
+          <span
+            className={`text-[10px] font-bold ${tagFarge} px-2.5 py-1 rounded-full whitespace-nowrap`}
+          >
+            {poeng} POENG
+          </span>
+        </div>
+
+        {verdi && !endrer ? (
+          <div className="bg-bg/40 backdrop-blur border border-border rounded-2xl p-3 flex items-center gap-3">
+            <div
+              className={`w-10 h-10 rounded-full ${ikonBg} flex items-center justify-center text-lg flex-shrink-0`}
+            >
+              {ikon}
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="font-bold truncate">{verdi}</div>
+              <div className="text-[10px] text-muted uppercase tracking-wider font-semibold">
+                Din tipp
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => setEndrer(true)}
+              className="text-xs font-semibold text-muted hover:text-text bg-elevated px-3 py-1.5 rounded-lg border border-border"
+            >
+              Endre
+            </button>
+          </div>
+        ) : (
+          <SpillerVelger
+            verdi={verdi}
+            onVelg={onVelg}
+            placeholder="Søk spiller eller lag…"
+            posFilter={posFilter}
+          />
+        )}
+      </div>
+    </div>
   );
 }
-
