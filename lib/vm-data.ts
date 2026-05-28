@@ -36,6 +36,64 @@ export function kortLagNavn(navn: string): string {
   return KORT_LAGNAVN[navn] || navn;
 }
 
+// Unicode flagg-emoji per lag. England og Skottland bruker
+// regional indicator subdivision sequences som faller tilbake til
+// 🏴 hvis enheten ikke støtter dem (eldre Windows, noen Androider).
+const FLAGG: Record<string, string> = {
+  Mexico: "🇲🇽",
+  "Sør-Korea": "🇰🇷",
+  "Sør-Afrika": "🇿🇦",
+  Tsjekkia: "🇨🇿",
+  Canada: "🇨🇦",
+  Sveits: "🇨🇭",
+  Qatar: "🇶🇦",
+  "Bosnia-Hercegovina": "🇧🇦",
+  Brasil: "🇧🇷",
+  Marokko: "🇲🇦",
+  Skottland: "🏴󠁧󠁢󠁳󠁣󠁴󠁿",
+  Haiti: "🇭🇹",
+  USA: "🇺🇸",
+  Australia: "🇦🇺",
+  Paraguay: "🇵🇾",
+  Tyrkia: "🇹🇷",
+  Tyskland: "🇩🇪",
+  Ecuador: "🇪🇨",
+  Elfenbenskysten: "🇨🇮",
+  Curaçao: "🇨🇼",
+  Nederland: "🇳🇱",
+  Japan: "🇯🇵",
+  Tunisia: "🇹🇳",
+  Sverige: "🇸🇪",
+  Belgia: "🇧🇪",
+  Iran: "🇮🇷",
+  Egypt: "🇪🇬",
+  "New Zealand": "🇳🇿",
+  Spania: "🇪🇸",
+  Uruguay: "🇺🇾",
+  "Saudi-Arabia": "🇸🇦",
+  "Kapp Verde": "🇨🇻",
+  Frankrike: "🇫🇷",
+  Senegal: "🇸🇳",
+  Norge: "🇳🇴",
+  Irak: "🇮🇶",
+  Argentina: "🇦🇷",
+  Østerrike: "🇦🇹",
+  Algerie: "🇩🇿",
+  Jordan: "🇯🇴",
+  Portugal: "🇵🇹",
+  Colombia: "🇨🇴",
+  Usbekistan: "🇺🇿",
+  "DR Kongo": "🇨🇩",
+  England: "🏴󠁧󠁢󠁥󠁮󠁧󠁿",
+  Kroatia: "🇭🇷",
+  Panama: "🇵🇦",
+  Ghana: "🇬🇭",
+};
+
+export function flagg(lag: string): string {
+  return FLAGG[lag] || "🏳";
+}
+
 // Alle 72 gruppekamper. Tider er Eastern Time (UTC-4, sommertid).
 // Format: [gruppe, "MM-DD", "HH:MM (24t ET)", hjem, bort]
 type RåKamp = [string, string, string, string, string];

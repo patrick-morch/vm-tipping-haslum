@@ -5,7 +5,12 @@ import { useEffect, useState } from "react";
 import { useAuth } from "@/lib/auth-context";
 import { useKamper, useMineTips, lagreTip, slettTip } from "@/lib/data";
 import { Match, Prediction, beregnPoeng } from "@/lib/types";
-import { erNorgeKamp, kortLagNavn, LÅS_FØR_KAMP_MS } from "@/lib/vm-data";
+import {
+  erNorgeKamp,
+  flagg,
+  kortLagNavn,
+  LÅS_FØR_KAMP_MS,
+} from "@/lib/vm-data";
 import Skall from "@/components/Skall";
 import Beskytt from "@/components/Beskytt";
 
@@ -173,7 +178,8 @@ function KampKort({
 
       <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3">
         <div className="text-right font-semibold min-w-0 truncate">
-          {kortLagNavn(kamp.hjemmelag)}
+          <span>{kortLagNavn(kamp.hjemmelag)}</span>{" "}
+          <span className="text-lg">{flagg(kamp.hjemmelag)}</span>
         </div>
         <div className="flex items-center gap-2">
           <Sc verdi={hjem} onChange={setHjem} />
@@ -181,7 +187,8 @@ function KampKort({
           <Sc verdi={bort} onChange={setBort} />
         </div>
         <div className="text-left font-semibold min-w-0 truncate">
-          {kortLagNavn(kamp.bortelag)}
+          <span className="text-lg">{flagg(kamp.bortelag)}</span>{" "}
+          <span>{kortLagNavn(kamp.bortelag)}</span>
         </div>
       </div>
 

@@ -13,6 +13,7 @@ import {
   GRUPPER,
   NORGE,
   erNorgeKamp,
+  flagg,
   kampErLåst,
   kortLagNavn,
 } from "@/lib/vm-data";
@@ -198,7 +199,10 @@ function TabellKort({
             >
               {s.posisjon}
             </span>
-            <span className="truncate">{kortLagNavn(s.lag)}</span>
+            <span className="truncate">
+              <span className="mr-1">{flagg(s.lag)}</span>
+              {kortLagNavn(s.lag)}
+            </span>
             <span className="text-right text-[10px] font-mono text-muted">
               {s.målFor}-{s.målMot}
             </span>
@@ -317,7 +321,8 @@ function KampRad({
       </div>
       <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
         <div className="text-right font-medium text-sm min-w-0 truncate">
-          {kortLagNavn(kamp.hjemmelag)}
+          <span>{kortLagNavn(kamp.hjemmelag)}</span>{" "}
+          <span className="text-base">{flagg(kamp.hjemmelag)}</span>
         </div>
         <div className="flex items-center gap-1.5">
           <ScoreIn verdi={hjem} onChange={setHjem} låst={låst} />
@@ -325,7 +330,8 @@ function KampRad({
           <ScoreIn verdi={bort} onChange={setBort} låst={låst} />
         </div>
         <div className="text-left font-medium text-sm min-w-0 truncate">
-          {kortLagNavn(kamp.bortelag)}
+          <span className="text-base">{flagg(kamp.bortelag)}</span>{" "}
+          <span>{kortLagNavn(kamp.bortelag)}</span>
         </div>
       </div>
       {kamp.resultat && (
