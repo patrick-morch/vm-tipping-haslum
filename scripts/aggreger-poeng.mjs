@@ -12,6 +12,41 @@ const POENG = {
   toppassist: 10,
 };
 
+// Speil av lib/vm-data.ts TIPPBARE_GRUPPE_LAG. Tipps på gruppekamper
+// utenfor denne lista (og utenfor Gruppe I) gir 0 poeng, så folk som
+// tilfeldigvis tippet på Australia-Tyrkia før kuratorlista ble lagt
+// til ikke får urettferdig fordel.
+const TIPPBARE_GRUPPE_LAG = new Set([
+  "Mexico",
+  "Tyskland",
+  "Sveits",
+  "Sverige",
+  "Nederland",
+  "Argentina",
+  "Østerrike",
+  "Brasil",
+  "Skottland",
+  "Belgia",
+  "Portugal",
+  "USA",
+  "Spania",
+  "Uruguay",
+  "England",
+  "Kroatia",
+  "Frankrike",
+  "Senegal",
+  "Norge",
+  "Irak",
+]);
+
+function erTippbar(kamp) {
+  if (!kamp.runde?.startsWith("Gruppe")) return true; // knockout = alle
+  return (
+    TIPPBARE_GRUPPE_LAG.has(kamp.hjemmelag) ||
+    TIPPBARE_GRUPPE_LAG.has(kamp.bortelag)
+  );
+}
+
 function init() {
   if (admin.apps.length) return;
   const raw = process.env.FIREBASE_SERVICE_ACCOUNT;
@@ -74,12 +109,14 @@ async function aggreger() {
     });
   }
 
-  // Kamp-poeng
+  // Kamp-poeng (bare tippbare kamper teller — kuraterte gruppekamper
+  // + alle knockout)
   for (const t of tips) {
     const rad = rader.get(t.uid);
     if (!rad) continue;
     const kamp = kampMap.get(t.matchId);
     if (!kamp || !kamp.resultat) continue;
+    if (!erTippbar(kamp)) continue;
     const p = beregnPoeng(t, kamp.resultat, kamp.bonusFaktor || 1);
     rad.kampPoeng += p;
     if (p >= 3 * (kamp.bonusFaktor || 1)) rad.eksakte += 1;
