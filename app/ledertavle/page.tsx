@@ -100,6 +100,8 @@ function Ledertavle() {
         />
       )}
 
+      <FilterBar rolleFilter={rolleFilter} onFilter={setRolleFilter} />
+
       {top3.length > 0 && (
         <Podium top3={top3} egenUid={user?.uid} ledersum={leder} />
       )}
@@ -109,9 +111,34 @@ function Ledertavle() {
         egenUid={user?.uid}
         startPlass={4}
         ledersum={leder}
-        rolleFilter={rolleFilter}
-        onFilter={setRolleFilter}
       />
+    </div>
+  );
+}
+
+function FilterBar({
+  rolleFilter,
+  onFilter,
+}: {
+  rolleFilter: "alle" | "trener" | "spiller" | "annet";
+  onFilter: (v: "alle" | "trener" | "spiller" | "annet") => void;
+}) {
+  return (
+    <div className="grid grid-cols-4 gap-1.5 bg-surface border border-border rounded-2xl p-1.5">
+      {FILTRE.map((f) => (
+        <button
+          key={f.v}
+          onClick={() => onFilter(f.v)}
+          className={`h-10 rounded-xl text-xs font-semibold transition flex flex-col items-center justify-center gap-0.5 ${
+            rolleFilter === f.v
+              ? "bg-primary text-primaryFg"
+              : "text-muted hover:text-text"
+          }`}
+        >
+          <span className="text-sm leading-none">{f.ikon}</span>
+          <span className="leading-none">{f.t}</span>
+        </button>
+      ))}
     </div>
   );
 }
@@ -316,34 +343,14 @@ function ListeKort({
   egenUid,
   startPlass,
   ledersum,
-  rolleFilter,
-  onFilter,
 }: {
   rader: LedertavleRad[];
   egenUid: string | undefined;
   startPlass: number;
   ledersum: number;
-  rolleFilter: "alle" | "trener" | "spiller" | "annet";
-  onFilter: (v: "alle" | "trener" | "spiller" | "annet") => void;
 }) {
   return (
     <div className="bg-surface border border-border rounded-2xl overflow-hidden">
-      <div className="grid grid-cols-4 gap-1 p-1.5 bg-elevated/40 border-b border-border">
-        {FILTRE.map((f) => (
-          <button
-            key={f.v}
-            onClick={() => onFilter(f.v)}
-            className={`h-10 rounded-lg text-xs font-semibold transition flex flex-col items-center justify-center gap-0.5 ${
-              rolleFilter === f.v
-                ? "bg-primary text-primaryFg"
-                : "text-muted hover:text-text"
-            }`}
-          >
-            <span className="text-sm leading-none">{f.ikon}</span>
-            <span className="leading-none">{f.t}</span>
-          </button>
-        ))}
-      </div>
       {rader.length === 0 && (
         <div className="px-4 py-8 text-center text-muted text-sm">
           Ingen medlemmer å vise.
