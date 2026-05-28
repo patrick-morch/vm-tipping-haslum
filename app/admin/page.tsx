@@ -67,6 +67,8 @@ function Admin() {
 
       <SeedSeksjon kamper={kamper} />
 
+      <MedlemmerSeksjon brukere={brukere} egenUid={bruker.uid} />
+
       <section className="bg-surface border border-border rounded-2xl p-4 space-y-3">
         <h2 className="font-semibold">Legg til kamp manuelt</h2>
         <form onSubmit={nyKamp} className="space-y-2">
@@ -127,8 +129,6 @@ function Admin() {
           <ResultatRad key={k.id} kamp={k} onLagre={settResultat} />
         ))}
       </section>
-
-      <MedlemmerSeksjon brukere={brukere} egenUid={bruker.uid} />
     </div>
   );
 }
