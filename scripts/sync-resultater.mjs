@@ -67,21 +67,35 @@ function tilNorske(event) {
 }
 
 /**
- * Finn vår kamp-id (A1..L6) som matcher et eksternt event.
- * Vi bruker lag (uavhengig av rekkefølge) + dato (samme dag).
+ * Finn vår kamp-id som matcher et eksternt event.
+ *
+ * Gruppekamper (round-robin): hvert lag-par møtes kun én gang, så vi
+ * matcher kun på lag-par.
+ *
+ * Knockout: samme lag-par kan teoretisk dukke opp i flere runder. Da
+ * legger vi til en sjekk på at runden matcher. Når vi har en runde-
+ * indikasjon i det eksterne eventet kan vi forbedre dette.
  */
 function finnVårKampId(våreKamper, ekstern) {
+  const treff = [];
   for (const [id, k] of Object.entries(våreKamper)) {
-    const sammeDag =
-      Math.abs(k.starttid - ekstern.starttid) < 24 * 60 * 60 * 1000;
     const sammeLag =
       (k.hjemmelag === ekstern.hjemmelag &&
         k.bortelag === ekstern.bortelag) ||
       (k.hjemmelag === ekstern.bortelag &&
         k.bortelag === ekstern.hjemmelag);
-    if (sammeDag && sammeLag) return { id, kamp: k, flippet: k.hjemmelag !== ekstern.hjemmelag };
+    if (!sammeLag) continue;
+    treff.push({ id, kamp: k, flippet: k.hjemmelag !== ekstern.hjemmelag });
   }
-  return null;
+  if (treff.length === 0) return null;
+  if (treff.length === 1) return treff[0];
+  // Flere kandidater (kan skje ved knockout): velg den nærmeste i tid
+  treff.sort(
+    (a, b) =>
+      Math.abs(a.kamp.starttid - ekstern.starttid) -
+      Math.abs(b.kamp.starttid - ekstern.starttid),
+  );
+  return treff[0];
 }
 
 async function syncResultater() {
