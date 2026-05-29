@@ -115,26 +115,28 @@ function Spesial() {
 
       <fieldset disabled={låst} className="space-y-4">
         <VmVinnerKort verdi={vmVinner} onVelg={setVmVinner} />
-        <SpillerKort
-          tittel="Toppscorer"
-          undertittel="Gullstøvelen"
-          ikon="⚽"
-          poeng={POENG.toppscorer}
-          tema="primary"
-          verdi={toppscorer}
-          onVelg={setToppscorer}
-          posFilter={["FW", "MF"]}
-        />
-        <SpillerKort
-          tittel="Toppassist"
-          undertittel="Mesterspilleren"
-          ikon="🎯"
-          poeng={POENG.toppassist}
-          tema="accent"
-          verdi={toppassist}
-          onVelg={setToppassist}
-          posFilter={["FW", "MF", "DF"]}
-        />
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <SpillerKort
+            tittel="Toppscorer"
+            undertittel="Gullstøvelen"
+            ikon="⚽"
+            poeng={POENG.toppscorer}
+            tema="primary"
+            verdi={toppscorer}
+            onVelg={setToppscorer}
+            posFilter={["FW", "MF"]}
+          />
+          <SpillerKort
+            tittel="Toppassist"
+            undertittel="Mesterspilleren"
+            ikon="🎯"
+            poeng={POENG.toppassist}
+            tema="accent"
+            verdi={toppassist}
+            onVelg={setToppassist}
+            posFilter={["FW", "MF", "DF"]}
+          />
+        </div>
       </fieldset>
     </div>
   );

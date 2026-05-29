@@ -135,15 +135,17 @@ function GruppeDetalj() {
         <h2 className="font-semibold text-sm uppercase tracking-wider text-muted">
           Kamper
         </h2>
-        {kamper.map((kamp) => (
-          <KampRad
-            key={kamp.id}
-            kamp={kamp}
-            tip={tips[kamp.id]}
-            onLagre={(h, b) => lagre(kamp.id, h, b)}
-            onSlett={() => slett(kamp.id)}
-          />
-        ))}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          {kamper.map((kamp) => (
+            <KampRad
+              key={kamp.id}
+              kamp={kamp}
+              tip={tips[kamp.id]}
+              onLagre={(h, b) => lagre(kamp.id, h, b)}
+              onSlett={() => slett(kamp.id)}
+            />
+          ))}
+        </div>
       </div>
     </div>
   );
