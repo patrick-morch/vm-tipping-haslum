@@ -81,7 +81,25 @@ function Kamper() {
   const nedTekst = førsteKamp ? formatTid(førsteKamp.starttid - nå) : null;
 
   return (
-    <div className="space-y-5">
+    <div className="flex flex-col xl:flex-row xl:items-start xl:gap-6">
+      {/* PC-only deko: Messi til venstre */}
+      <aside className="hidden xl:block xl:flex-shrink-0 xl:sticky xl:top-24 w-48">
+        <div className="relative rounded-3xl overflow-hidden border border-border shadow-card">
+          <img
+            src="/messi.jpg"
+            alt="Lionel Messi"
+            className="w-full h-64 object-cover"
+          />
+          <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-bg/90 via-bg/40 to-transparent p-2">
+            <div className="text-[10px] uppercase tracking-[0.15em] font-bold text-text/90">
+              Messi
+            </div>
+            <div className="text-[9px] text-text/60">Argentina</div>
+          </div>
+        </div>
+      </aside>
+
+      <div className="flex-1 min-w-0 space-y-5">
       <SideHeader
         tittel="Neste kamper"
         undertittel={
@@ -147,6 +165,24 @@ function Kamper() {
           </div>
         </div>
       )}
+      </div>
+
+      {/* PC-only deko: Ronaldo til høyre */}
+      <aside className="hidden xl:block xl:flex-shrink-0 xl:sticky xl:top-24 w-48">
+        <div className="relative rounded-3xl overflow-hidden border border-border shadow-card">
+          <img
+            src="/ronaldo.jpg"
+            alt="Cristiano Ronaldo"
+            className="w-full h-64 object-cover"
+          />
+          <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-bg/90 via-bg/40 to-transparent p-2">
+            <div className="text-[10px] uppercase tracking-[0.15em] font-bold text-text/90">
+              Ronaldo
+            </div>
+            <div className="text-[9px] text-text/60">Portugal</div>
+          </div>
+        </div>
+      </aside>
     </div>
   );
 }
