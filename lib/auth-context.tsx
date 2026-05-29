@@ -53,15 +53,57 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (fbActive) {
       const unsub = onAuthStateChanged(fbAuth(), async (u: User | null) => {
-        if (u) {
-          setUser({ uid: u.uid, email: u.email || "" });
-          const snap = await getDoc(doc(fbDb(), "brukere", u.uid));
-          if (snap.exists()) setBruker(snap.data() as Bruker);
-        } else {
-          setUser(null);
-          setBruker(null);
+        try {
+          if (u) {
+            setUser({ uid: u.uid, email: u.email || "" });
+            let snap;
+            try {
+              snap = await getDoc(doc(fbDb(), "brukere", u.uid));
+            } catch (e) {
+              console.error("Klarte ikke å lese brukerdoc:", e);
+              return;
+            }
+            if (snap.exists()) {
+              setBruker(snap.data() as Bruker);
+            } else {
+              // Self-healing: brukeren har Firebase Auth-konto, men
+              // mangler dokument i brukere-kolleksjonen. Opprett en
+              // minimal versjon så de kommer inn i appen. Admin kan
+              // sette riktig klubbrolle etterpå.
+              console.warn(
+                "Manglet brukerdoc for",
+                u.uid,
+                "— oppretter default",
+              );
+              const fallback: Bruker = {
+                uid: u.uid,
+                epost: u.email || "",
+                navn:
+                  u.displayName ||
+                  u.email?.split("@")[0] ||
+                  "Ukjent bruker",
+                klubbRolle: "annet",
+                rolle: "medlem",
+                poeng: 0,
+                opprettet: Date.now(),
+              };
+              try {
+                await setDoc(doc(fbDb(), "brukere", u.uid), fallback);
+                setBruker(fallback);
+              } catch (e) {
+                console.error(
+                  "Klarte ikke å opprette fallback-brukerdoc:",
+                  e,
+                );
+              }
+            }
+          } else {
+            setUser(null);
+            setBruker(null);
+          }
+        } finally {
+          setLaster(false);
         }
-        setLaster(false);
       });
       return () => unsub();
     }
@@ -130,18 +172,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         epost,
         passord,
       );
-      await updateProfile(cred.user, { displayName: navn });
-      const ny: Bruker = {
-        uid: cred.user.uid,
-        epost,
-        navn,
-        klubbRolle,
-        rolle: "medlem",
-        poeng: 0,
-        opprettet: Date.now(),
-      };
-      await setDoc(doc(fbDb(), "brukere", cred.user.uid), ny);
-      setBruker(ny);
+      try {
+        await updateProfile(cred.user, { displayName: navn });
+        const ny: Bruker = {
+          uid: cred.user.uid,
+          epost,
+          navn,
+          klubbRolle,
+          rolle: "medlem",
+          poeng: 0,
+          opprettet: Date.now(),
+        };
+        await setDoc(doc(fbDb(), "brukere", cred.user.uid), ny);
+        setBruker(ny);
+      } catch (e) {
+        // setDoc/updateProfile feilet — slett Auth-kontoen så vi ikke
+        // ender opp med en orphan Auth-bruker uten brukerdoc
+        try {
+          await cred.user.delete();
+        } catch (slettFeil) {
+          console.error(
+            "Klarte ikke å rulle tilbake Auth-konto:",
+            slettFeil,
+          );
+        }
+        throw e;
+      }
       return;
     }
     const norm = epost.trim().toLowerCase();
