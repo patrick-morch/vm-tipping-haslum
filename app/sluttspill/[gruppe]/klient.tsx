@@ -135,7 +135,7 @@ function GruppeDetalj() {
         <h2 className="font-semibold text-sm uppercase tracking-wider text-muted">
           Kamper
         </h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
           {kamper.map((kamp) => (
             <KampRad
               key={kamp.id}
