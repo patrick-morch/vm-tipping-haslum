@@ -112,7 +112,7 @@ function Kamper() {
       {grupperte.map(({ dato, kamper: dagsKamper }) => (
         <div key={dato} className="space-y-2">
           <DatoHeader dato={dato} nå={nå} />
-          <div className="space-y-2">
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-2">
             {dagsKamper.map((kamp) => (
               <KampKort
                 key={kamp.id}
@@ -140,7 +140,7 @@ function Kamper() {
           <div className="text-[10px] uppercase tracking-[0.15em] font-bold text-muted px-1">
             Siste resultater
           </div>
-          <div className="space-y-2">
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-2">
             {sisteFerdige.map((kamp) => (
               <ResultatKort key={kamp.id} kamp={kamp} tip={tips[kamp.id]} />
             ))}

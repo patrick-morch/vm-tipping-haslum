@@ -35,7 +35,7 @@ export default function Skall({ children }: { children: ReactNode }) {
         </div>
       )}
       <header className="sticky top-0 z-10 bg-bg/85 backdrop-blur border-b border-border">
-        <div className="max-w-[480px] mx-auto px-4 py-3 flex items-center justify-between">
+        <div className="max-w-[480px] md:max-w-3xl lg:max-w-6xl xl:max-w-7xl mx-auto px-4 lg:px-6 py-3 flex items-center justify-between">
           <Link href="/kamper" className="flex items-center gap-2">
             <img
               src="/haslum-logo.jpeg"
@@ -80,17 +80,17 @@ export default function Skall({ children }: { children: ReactNode }) {
       </header>
 
       <main
-        className={`flex-1 w-full mx-auto px-4 py-4 pb-24 ${
+        className={`flex-1 w-full mx-auto px-4 lg:px-6 py-4 pb-24 ${
           path === "/sluttspill" || path === "/sluttspill/"
-            ? "max-w-[480px] lg:max-w-6xl"
-            : "max-w-[480px]"
+            ? "max-w-[480px] lg:max-w-7xl"
+            : "max-w-[480px] md:max-w-3xl lg:max-w-6xl xl:max-w-7xl"
         }`}
       >
         {children}
       </main>
 
       <nav className="fixed bottom-0 left-0 right-0 bg-surface border-t border-border">
-        <div className="max-w-[480px] mx-auto grid grid-cols-5">
+        <div className="max-w-[480px] md:max-w-2xl mx-auto grid grid-cols-5">
           {nav.map((n) => {
             const aktiv = path === n.href;
             return (
