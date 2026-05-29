@@ -41,7 +41,7 @@ export default function LoggInn() {
         }
         await glemtPassord(epost);
         setInfo(
-          "Sjekk e-posten din — vi har sendt en lenke for å sette nytt passord.",
+          "Sjekk e-posten din — vi har sendt en lenke for å sette nytt passord. Sjekk søppelpost/spam hvis du ikke ser den i innboksen.",
         );
       } else {
         if (passord.length < 8) {
