@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
 import type { KlubbRolle } from "@/lib/types";
 
-type Modus = "logg-inn" | "registrer";
+type Modus = "logg-inn" | "registrer" | "glemt";
 
 const KLUBB_ROLLER: { verdi: KlubbRolle; tittel: string; ikon: string }[] = [
   { verdi: "trener", tittel: "Trener", ikon: "🧥" },
@@ -14,7 +14,7 @@ const KLUBB_ROLLER: { verdi: KlubbRolle; tittel: string; ikon: string }[] = [
 ];
 
 export default function LoggInn() {
-  const { loggInn, registrer, demoModus } = useAuth();
+  const { loggInn, registrer, glemtPassord, demoModus } = useAuth();
   const router = useRouter();
   const [modus, setModus] = useState<Modus>("logg-inn");
   const [epost, setEpost] = useState("");
@@ -23,16 +23,26 @@ export default function LoggInn() {
   const [navn, setNavn] = useState("");
   const [klubbRolle, setKlubbRolle] = useState<KlubbRolle | "">("");
   const [feil, setFeil] = useState<string | null>(null);
+  const [info, setInfo] = useState<string | null>(null);
   const [laster, setLaster] = useState(false);
 
   async function sendInn(e: React.FormEvent) {
     e.preventDefault();
     setFeil(null);
+    setInfo(null);
     setLaster(true);
     try {
       if (modus === "logg-inn") {
         await loggInn(epost.trim(), passord);
         router.push("/kamper");
+      } else if (modus === "glemt") {
+        if (!epost.trim()) {
+          throw new Error("Skriv inn e-posten din.");
+        }
+        await glemtPassord(epost);
+        setInfo(
+          "Sjekk e-posten din — vi har sendt en lenke for å sette nytt passord.",
+        );
       } else {
         if (passord.length < 8) {
           throw new Error("Passord må være minst 8 tegn.");
@@ -72,11 +82,17 @@ export default function LoggInn() {
   function byttModus(m: Modus) {
     setModus(m);
     setFeil(null);
+    setInfo(null);
     setBekreft("");
     setKlubbRolle("");
   }
 
-  const tittel = modus === "logg-inn" ? "Logg inn" : "Opprett bruker";
+  const tittel =
+    modus === "logg-inn"
+      ? "Logg inn"
+      : modus === "registrer"
+        ? "Opprett bruker"
+        : "Glemt passord";
   const bekreftFeil =
     modus === "registrer" && bekreft !== "" && bekreft !== passord;
 
@@ -108,7 +124,9 @@ export default function LoggInn() {
           <p className="text-muted text-sm mb-6">
             {modus === "logg-inn"
               ? "Velkommen tilbake."
-              : "Bli med i klubbens VM-tipping."}
+              : modus === "registrer"
+                ? "Bli med i klubbens VM-tipping."
+                : "Vi sender deg en lenke for å sette nytt passord."}
           </p>
 
           <form onSubmit={sendInn} className="space-y-3">
@@ -154,15 +172,17 @@ export default function LoggInn() {
               autoComplete="email"
               required
             />
-            <PassordFelt
-              etikett="Passord"
-              verdi={passord}
-              onChange={setPassord}
-              autoComplete={
-                modus === "registrer" ? "new-password" : "current-password"
-              }
-              hint={modus === "registrer" ? "Minst 8 tegn" : undefined}
-            />
+            {modus !== "glemt" && (
+              <PassordFelt
+                etikett="Passord"
+                verdi={passord}
+                onChange={setPassord}
+                autoComplete={
+                  modus === "registrer" ? "new-password" : "current-password"
+                }
+                hint={modus === "registrer" ? "Minst 8 tegn" : undefined}
+              />
+            )}
             {modus === "registrer" && (
               <PassordFelt
                 etikett="Bekreft passord"
@@ -178,6 +198,11 @@ export default function LoggInn() {
                 {feil}
               </div>
             )}
+            {info && (
+              <div className="text-sm text-success bg-success/10 border border-success/30 rounded-xl px-3 py-2">
+                {info}
+              </div>
+            )}
 
             <button
               type="submit"
@@ -188,27 +213,46 @@ export default function LoggInn() {
                 ? "Vent…"
                 : modus === "logg-inn"
                   ? "Logg inn"
-                  : "Opprett bruker"}
+                  : modus === "registrer"
+                    ? "Opprett bruker"
+                    : "Send lenke"}
             </button>
           </form>
 
-          <div className="mt-5 text-sm text-muted text-center">
-            {modus === "logg-inn" ? (
-              <div>
-                Ingen bruker?{" "}
+          <div className="mt-5 text-sm text-muted text-center space-y-2">
+            {modus === "logg-inn" && (
+              <>
                 <button
-                  onClick={() => byttModus("registrer")}
-                  className="text-primary hover:underline"
+                  onClick={() => byttModus("glemt")}
+                  className="hover:text-text"
                 >
-                  Opprett en
+                  Glemt passord?
                 </button>
-              </div>
-            ) : (
+                <div>
+                  Ingen bruker?{" "}
+                  <button
+                    onClick={() => byttModus("registrer")}
+                    className="text-primary hover:underline"
+                  >
+                    Opprett en
+                  </button>
+                </div>
+              </>
+            )}
+            {modus === "registrer" && (
               <button
                 onClick={() => byttModus("logg-inn")}
                 className="hover:text-text"
               >
                 Har du allerede bruker? Logg inn
+              </button>
+            )}
+            {modus === "glemt" && (
+              <button
+                onClick={() => byttModus("logg-inn")}
+                className="hover:text-text"
+              >
+                Tilbake til innlogging
               </button>
             )}
           </div>

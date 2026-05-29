@@ -12,6 +12,7 @@ import {
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
   signOut,
+  sendPasswordResetEmail,
   updateProfile,
   User,
 } from "firebase/auth";
@@ -38,6 +39,7 @@ type AuthCtx = {
     klubbRolle: KlubbRolle,
   ) => Promise<void>;
   loggUt: () => Promise<void>;
+  glemtPassord: (epost: string) => Promise<void>;
   gjørAdmin: () => void;
 };
 
@@ -232,6 +234,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localCurrent.set(null);
   }
 
+  async function glemtPassord(epost: string) {
+    if (fbActive) {
+      await sendPasswordResetEmail(fbAuth(), epost.trim());
+      return;
+    }
+    throw new Error(
+      "Glemt passord er ikke tilgjengelig i demo-modus. Slett nettleserdata for å nullstille.",
+    );
+  }
+
   function gjørAdmin() {
     if (fbActive || !user) return;
     const map = localBrukere.get();
@@ -250,6 +262,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         loggInn,
         registrer,
         loggUt,
+        glemtPassord,
         gjørAdmin,
       }}
     >
