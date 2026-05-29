@@ -57,6 +57,12 @@ export default function LoggInn() {
         setFeil("E-posten er allerede registrert.");
       else if (kode.includes("invalid-email"))
         setFeil("Ugyldig e-postadresse.");
+      else if (kode.includes("user-not-found"))
+        setFeil("Ingen bruker med denne e-posten. Opprett en konto først.");
+      else if (kode.includes("too-many-requests"))
+        setFeil("For mange forsøk. Vent litt og prøv igjen.");
+      else if (kode.includes("network-request-failed"))
+        setFeil("Nettverksfeil. Sjekk at du har dekning.");
       else setFeil(err?.message || "Noe gikk galt. Prøv igjen.");
     } finally {
       setLaster(false);
