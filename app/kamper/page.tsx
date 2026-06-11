@@ -5,13 +5,7 @@ import { useEffect, useState } from "react";
 import { useAuth } from "@/lib/auth-context";
 import { useKamper, useMineTips, lagreTip, slettTip } from "@/lib/data";
 import { Match, Prediction, beregnPoeng } from "@/lib/types";
-import {
-  erNorgeKamp,
-  erTippbar,
-  flagg,
-  kortLagNavn,
-  LÅS_FØR_KAMP_MS,
-} from "@/lib/vm-data";
+import { erNorgeKamp, erTippbar, flagg, kortLagNavn } from "@/lib/vm-data";
 import Skall from "@/components/Skall";
 import Beskytt from "@/components/Beskytt";
 import SideHeader from "@/components/SideHeader";
@@ -47,7 +41,7 @@ function Kamper() {
   }, []);
 
   const åpne = kamper
-    .filter((k) => k.starttid - LÅS_FØR_KAMP_MS > nå && erTippbar(k))
+    .filter((k) => k.starttid > nå && erTippbar(k))
     .sort((a, b) => a.starttid - b.starttid);
   const neste = åpne.slice(0, ANTALL);
   const utenTip = neste.filter((k) => !tips[k.id]).length;

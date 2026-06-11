@@ -97,7 +97,7 @@ function Poeng() {
             <div>
               <div className="font-semibold">Kampresultat</div>
               <div className="text-muted text-xs">
-                Låses 1 time før kickoff for hver kamp.
+                Låses ved kampstart (avspark) for hver kamp.
               </div>
             </div>
           </div>
@@ -160,7 +160,7 @@ function Poeng() {
       </Kort>
 
       <div className="text-center text-xs text-muted px-4 pt-2">
-        Ledertavlen oppdateres automatisk hver natt.
+        Ledertavlen oppdateres automatisk hver morgen kl 10.
       </div>
     </div>
   );
