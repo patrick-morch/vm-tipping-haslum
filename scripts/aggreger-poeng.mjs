@@ -106,6 +106,8 @@ async function aggreger() {
       kampPoeng: 0,
       spesialPoeng: 0,
       eksakte: 0,
+      utfall: 0,
+      feil: 0,
     });
   }
 
@@ -117,9 +119,12 @@ async function aggreger() {
     const kamp = kampMap.get(t.matchId);
     if (!kamp || !kamp.resultat) continue;
     if (!erTippbar(kamp)) continue;
-    const p = beregnPoeng(t, kamp.resultat, kamp.bonusFaktor || 1);
+    const bonus = kamp.bonusFaktor || 1;
+    const p = beregnPoeng(t, kamp.resultat, bonus);
     rad.kampPoeng += p;
-    if (p >= 3 * (kamp.bonusFaktor || 1)) rad.eksakte += 1;
+    if (p === 3 * bonus) rad.eksakte += 1;
+    else if (p === 1 * bonus) rad.utfall += 1;
+    else rad.feil += 1;
   }
 
   // Spesial-poeng
@@ -164,4 +169,10 @@ async function aggreger() {
   );
 }
 
-await aggreger();
+export { aggreger };
+
+// Kjør bare automatisk når scriptet startes direkte (ikke ved import fra
+// sync-resultater, som kaller aggreger() selv når et resultat har endret seg).
+if (import.meta.url === `file://${process.argv[1]}`) {
+  await aggreger();
+}

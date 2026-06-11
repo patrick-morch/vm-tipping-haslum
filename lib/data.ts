@@ -147,6 +147,8 @@ export type LedertavleRad = {
   kampPoeng: number;
   spesialPoeng: number;
   eksakte: number;
+  utfall: number;
+  feil: number;
 };
 export type AggregertLedertavle = {
   oppdatert: number;

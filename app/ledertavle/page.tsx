@@ -1,18 +1,17 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "@/lib/auth-context";
-import {
-  useAggregertLedertavle,
-  useAlleSpesialTips,
-  useAlleTips,
-  useBrukere,
-  useFasit,
-  useKamper,
-  type LedertavleRad,
-} from "@/lib/data";
+import { useAggregertLedertavle, type LedertavleRad } from "@/lib/data";
 import { beregnPoeng } from "@/lib/types";
 import { POENG } from "@/lib/vm-data";
+import {
+  localBrukere,
+  localFasit,
+  localKamper,
+  localSpesialTips,
+  localTips,
+} from "@/lib/local-store";
 import Skall from "@/components/Skall";
 import Beskytt from "@/components/Beskytt";
 import SideHeader from "@/components/SideHeader";
@@ -37,105 +36,107 @@ function initialer(navn: string): string {
     .toUpperCase();
 }
 
-type RadMedStats = LedertavleRad & {
-  utfall: number;
-  feil: number;
-};
+type RadMedStats = LedertavleRad;
+
+// Demo-modus regner ut ledertavlen lokalt fra nettleserens lagrede data
+// (ingen Firestore-lesing). I Firebase-modus leser vi i stedet det
+// ferdig-aggregerte dokumentet (1 read), så vi holder oss innenfor
+// gratis-kvoten selv med mange brukere. Aggregeringen kjøres automatisk
+// etter hver resultat-sync, så tallene er ferske innen ~10 min.
+function useDemoLedertavle(aktiv: boolean): RadMedStats[] {
+  const [rader, setRader] = useState<RadMedStats[]>([]);
+  useEffect(() => {
+    if (!aktiv) {
+      setRader([]);
+      return;
+    }
+    const norm = (s: string) => s.trim().toLowerCase();
+    const regnUt = () => {
+      const brukere = Object.values(localBrukere.get());
+      const kamper = localKamper.get();
+      const tips = Object.values(localTips.get());
+      const spesial = Object.values(localSpesialTips.get());
+      const fasit = localFasit.get();
+
+      const ferdige = new Map(
+        kamper.filter((k) => k.resultat).map((k) => [k.id, k]),
+      );
+      const map = new Map<string, RadMedStats>();
+      for (const b of brukere) {
+        map.set(b.uid, {
+          uid: b.uid,
+          navn: b.navn,
+          avdeling: "",
+          klubbRolle: b.klubbRolle,
+          poeng: 0,
+          kampPoeng: 0,
+          spesialPoeng: 0,
+          eksakte: 0,
+          utfall: 0,
+          feil: 0,
+        });
+      }
+      for (const t of tips) {
+        const rad = map.get(t.uid);
+        if (!rad) continue;
+        const k = ferdige.get(t.matchId);
+        if (!k || !k.resultat) continue;
+        const bonus = k.bonusFaktor || 1;
+        const p = beregnPoeng(t, k.resultat, bonus);
+        rad.kampPoeng += p;
+        if (p === 3 * bonus) rad.eksakte += 1;
+        else if (p === 1 * bonus) rad.utfall += 1;
+        else rad.feil += 1;
+      }
+      for (const s of spesial) {
+        const rad = map.get(s.uid);
+        if (!rad) continue;
+        if (fasit.vmVinner && fasit.vmVinner === s.vmVinner)
+          rad.spesialPoeng += POENG.vmVinner;
+        if (
+          fasit.toppscorer &&
+          s.toppscorer &&
+          norm(s.toppscorer) === norm(fasit.toppscorer)
+        )
+          rad.spesialPoeng += POENG.toppscorer;
+        if (
+          fasit.toppassist &&
+          s.toppassist &&
+          norm(s.toppassist) === norm(fasit.toppassist)
+        )
+          rad.spesialPoeng += POENG.toppassist;
+      }
+      const liste = Array.from(map.values())
+        .map((r) => ({ ...r, poeng: r.kampPoeng + r.spesialPoeng }))
+        .sort((a, b) => b.poeng - a.poeng);
+      setRader(liste);
+    };
+    const unsub = [
+      localBrukere.subscribe(regnUt),
+      localKamper.subscribe(regnUt),
+      localTips.subscribe(regnUt),
+      localSpesialTips.subscribe(regnUt),
+      localFasit.subscribe(regnUt),
+    ];
+    return () => unsub.forEach((u) => u());
+  }, [aktiv]);
+  return rader;
+}
 
 function Ledertavle() {
   const { user, demoModus } = useAuth();
   const aggregert = useAggregertLedertavle();
-  const brukere = useBrukere();
-  const alleTips = useAlleTips();
-  const alleSpesial = useAlleSpesialTips();
-  const fasit = useFasit();
-  const kamper = useKamper();
+  const demoRader = useDemoLedertavle(demoModus);
   const [rolleFilter, setRolleFilter] = useState<
     "alle" | "trener" | "spiller" | "annet"
   >("alle");
 
-  const liveStats = useMemo(() => {
-    const ferdige = new Map(
-      kamper.filter((k) => k.resultat).map((k) => [k.id, k]),
-    );
-    const m = new Map<
-      string,
-      { kampPoeng: number; eksakte: number; utfall: number; feil: number }
-    >();
-    for (const t of alleTips) {
-      const k = ferdige.get(t.matchId);
-      if (!k || !k.resultat) continue;
-      const bonus = k.bonusFaktor || 1;
-      const p = beregnPoeng(t, k.resultat, bonus);
-      const cur = m.get(t.uid) || {
-        kampPoeng: 0,
-        eksakte: 0,
-        utfall: 0,
-        feil: 0,
-      };
-      cur.kampPoeng += p;
-      if (p === 3 * bonus) cur.eksakte += 1;
-      else if (p === 1 * bonus) cur.utfall += 1;
-      else cur.feil += 1;
-      m.set(t.uid, cur);
-    }
-    return m;
-  }, [alleTips, kamper]);
-
-  const liveSpesial = useMemo(() => {
-    const m = new Map<string, number>();
-    const norm = (s: string) => s.trim().toLowerCase();
-    for (const s of alleSpesial) {
-      let p = 0;
-      if (fasit.vmVinner && fasit.vmVinner === s.vmVinner) p += POENG.vmVinner;
-      if (
-        fasit.toppscorer &&
-        s.toppscorer &&
-        norm(s.toppscorer) === norm(fasit.toppscorer)
-      )
-        p += POENG.toppscorer;
-      if (
-        fasit.toppassist &&
-        s.toppassist &&
-        norm(s.toppassist) === norm(fasit.toppassist)
-      )
-        p += POENG.toppassist;
-      m.set(s.uid, p);
-    }
-    return m;
-  }, [alleSpesial, fasit]);
-
   const rader: RadMedStats[] = useMemo(() => {
-    // Brukere er sannhetskilden for medlemskap. Live-stats fra tips+kamper
-    // og spesialtips+fasit gir umiddelbar oppdatering.
-    const aggregertMap = new Map(
-      (aggregert?.rader || []).map((r) => [r.uid, r]),
-    );
-    return brukere
-      .map((b) => {
-        const agg = aggregertMap.get(b.uid);
-        const stats = liveStats.get(b.uid) || {
-          kampPoeng: 0,
-          eksakte: 0,
-          utfall: 0,
-          feil: 0,
-        };
-        const spesialPoeng = liveSpesial.get(b.uid) ?? 0;
-        return {
-          uid: b.uid,
-          navn: agg?.navn || b.navn,
-          avdeling: "",
-          klubbRolle: agg?.klubbRolle || b.klubbRolle,
-          poeng: stats.kampPoeng + spesialPoeng,
-          kampPoeng: stats.kampPoeng,
-          spesialPoeng,
-          eksakte: stats.eksakte,
-          utfall: stats.utfall,
-          feil: stats.feil,
-        };
-      })
+    const kilde = demoModus ? demoRader : aggregert?.rader ?? [];
+    return kilde
+      .map((r) => ({ ...r, utfall: r.utfall ?? 0, feil: r.feil ?? 0 }))
       .sort((a, b) => b.poeng - a.poeng);
-  }, [aggregert, brukere, liveStats, liveSpesial]);
+  }, [demoModus, demoRader, aggregert]);
 
   const synlige =
     rolleFilter === "alle"
@@ -175,8 +176,8 @@ function Ledertavle() {
       {!aggregert && !demoModus && (
         <div className="bg-warning/10 border border-warning/30 text-warning text-xs rounded-2xl px-3 py-2.5 flex items-center gap-2">
           <span>⏳</span>
-          Ledertavlen oppdateres hver morgen kl 10. Første aggregering kommer
-          i morgen tidlig.
+          Ledertavlen oppdateres automatisk etter hver fullførte kamp. Henter
+          poeng…
         </div>
       )}
 

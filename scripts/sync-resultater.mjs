@@ -9,6 +9,7 @@
 
 import admin from "firebase-admin";
 import { tilNorsk } from "./lib/lag-mapping.mjs";
+import { aggreger } from "./aggreger-poeng.mjs";
 
 const SPORTSDB_BASE = "https://www.thesportsdb.com/api/v1/json/3";
 const LIGA_ID = "4429"; // FIFA World Cup
@@ -249,3 +250,14 @@ const r = await syncResultater();
 console.log(
   `\n✓ Sync ferdig. Oppdaterte ${r.oppdatert} kamper, opprettet ${r.opprettet} knockout-kamper.`,
 );
+
+// Ledertavlen leser kun det aggregerte dokumentet (1 read), så vi må
+// re-aggregere når et resultat faktisk har endret seg — da er poengene
+// ferske innen ~10 min (sync-intervallet) i stedet for å vente til
+// neste døgnlige aggregering.
+if (r.oppdatert > 0 || r.opprettet > 0) {
+  console.log("\nResultater endret — kjører poeng-aggregering…");
+  await aggreger();
+} else {
+  console.log("\nIngen resultatendringer — hopper over aggregering.");
+}
