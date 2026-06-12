@@ -7,12 +7,50 @@
 //    etter gruppespillet. Vi oppretter nye kamper med id 'kn-<idEvent>' og
 //    riktig runde-navn. Resultater fylles inn i samme sync.
 
+import { appendFileSync } from "node:fs";
 import admin from "firebase-admin";
 import { tilNorsk } from "./lib/lag-mapping.mjs";
-import { aggreger } from "./aggreger-poeng.mjs";
 
 const SPORTSDB_BASE = "https://www.thesportsdb.com/api/v1/json/3";
 const LIGA_ID = "4429"; // FIFA World Cup
+
+const TRE_TIMER_MS = 3 * 60 * 60 * 1000;
+
+// Statuser fra TheSportsDB som betyr at kampen er ferdigspilt. Poeng skal
+// først aggregeres ved full tid (ikke på live-score), så ledertavlen settes
+// når resultatet er endelig. Live-scoren skrives uansett til kamp-kortene.
+const FERDIG_STATUS = new Set([
+  "MATCH FINISHED",
+  "FINISHED",
+  "FT",
+  "FULL TIME",
+  "AET",
+  "AP",
+  "PEN",
+  "AFTER EXTRA TIME",
+  "PENALTIES",
+]);
+
+// Statuser som eksplisitt betyr at kampen IKKE er ferdig (pågår, pause, utsatt).
+const IKKE_FERDIG_STATUS = new Set([
+  "NS", "NOT STARTED", "1H", "2H", "HT", "HALF TIME", "FIRST HALF",
+  "SECOND HALF", "ET", "EXTRA TIME", "BT", "BREAK TIME", "P", "LIVE",
+  "IN PLAY", "SUSP", "SUSPENDED", "POSTPONED", "PST", "ABANDONED",
+  "ABD", "CANCELLED", "TBD",
+]);
+
+// Avgjør om en kamp er ferdigspilt. Primært via statusstrengen; hvis den er
+// blank eller ukjent faller vi tilbake på tid: et resultat finnes OG det er
+// gått > 3 t siden avspark (dekker 90' + ekstraomganger + straffer). Hindrer
+// at en uventet statusstreng fra TheSportsDB fryser poengene for godt.
+function erFerdig(status, starttid, harResultat) {
+  const s = status ? String(status).trim().toUpperCase() : "";
+  if (FERDIG_STATUS.has(s)) return true;
+  if (IKKE_FERDIG_STATUS.has(s)) return false;
+  if (harResultat && starttid && Date.now() - starttid > TRE_TIMER_MS)
+    return true;
+  return false;
+}
 
 // TheSportsDB-runder → norske rundenavn. Gruppespill (1-3) håndteres
 // av eksisterende A1..L6, så bare knockout-runder mappes her.
@@ -54,19 +92,21 @@ function tilNorske(event) {
   const b = tilNorsk(event.strAwayTeam);
   if (!h || !b) return null;
   const tid = new Date(event.strTimestamp + "Z").getTime();
+  const resultat =
+    event.intHomeScore != null && event.intAwayScore != null
+      ? {
+          hjemme: Number(event.intHomeScore),
+          borte: Number(event.intAwayScore),
+        }
+      : null;
   return {
     idEvent: event.idEvent,
     intRound: Number(event.intRound) || 0,
     hjemmelag: h,
     bortelag: b,
     starttid: tid,
-    resultat:
-      event.intHomeScore != null && event.intAwayScore != null
-        ? {
-            hjemme: Number(event.intHomeScore),
-            borte: Number(event.intAwayScore),
-          }
-        : null,
+    ferdig: erFerdig(event.strStatus, tid, resultat != null),
+    resultat,
   };
 }
 
@@ -113,6 +153,9 @@ async function syncResultater() {
 
   let oppdatertResultat = 0;
   let opprettetKnockout = 0;
+  // Antall kamper som ble ferdigspilt (endelig resultat) denne kjøringen.
+  // Bare disse skal trigge poeng-aggregering.
+  let ferdigeKamper = 0;
 
   for (const e of events) {
     const norsk = tilNorske(e);
@@ -138,18 +181,23 @@ async function syncResultater() {
         ? { hjemme: norsk.resultat.borte, borte: norsk.resultat.hjemme }
         : norsk.resultat;
       const eks = treff.kamp.resultat;
-      if (
-        eks &&
-        eks.hjemme === skriv.hjemme &&
-        eks.borte === skriv.borte
-      )
-        continue;
+      const resultatLikt =
+        eks && eks.hjemme === skriv.hjemme && eks.borte === skriv.borte;
+      // ferdig-flagget kan ha endret seg selv om scoren er lik (live → full
+      // tid med samme stilling). Da må vi fortsatt skrive og trigge aggregering.
+      const ferdigLikt = (treff.kamp.ferdig ?? null) === norsk.ferdig;
+      if (resultatLikt && ferdigLikt) continue;
 
-      await db.collection("kamper").doc(treff.id).update({ resultat: skriv });
+      const upd = { ferdig: norsk.ferdig };
+      if (!resultatLikt) upd.resultat = skriv;
+      await db.collection("kamper").doc(treff.id).update(upd);
       console.log(
-        `  ✓ ${treff.id}: ${treff.kamp.hjemmelag} ${skriv.hjemme}-${skriv.borte} ${treff.kamp.bortelag}`,
+        `  ✓ ${treff.id}: ${treff.kamp.hjemmelag} ${skriv.hjemme}-${skriv.borte} ${treff.kamp.bortelag}${norsk.ferdig ? " (ferdig)" : " (live)"}`,
       );
       oppdatertResultat += 1;
+      // Trigg aggregering når kampen nettopp ble ferdig (eller fikk korrigert
+      // sluttresultat). Live-oppdateringer trigger ikke poeng.
+      if (norsk.ferdig) ferdigeKamper += 1;
     } else {
       // === Knockout: opprett kamp hvis den ikke finnes, ellers oppdater ===
       const id = `kn-${norsk.idEvent}`;
@@ -165,9 +213,11 @@ async function syncResultater() {
           bonusFaktor:
             norsk.hjemmelag === "Norge" || norsk.bortelag === "Norge" ? 2 : 1,
           resultat: norsk.resultat,
+          ferdig: norsk.ferdig,
         });
         console.log(`  + ${id}: ${runde} ${norsk.hjemmelag} vs ${norsk.bortelag}`);
         opprettetKnockout += 1;
+        if (norsk.resultat && norsk.ferdig) ferdigeKamper += 1;
       } else {
         // Oppdater hvis matchups eller resultat har endret seg
         const oppdateringer = {};
@@ -181,13 +231,17 @@ async function syncResultater() {
         if (eks.starttid !== norsk.starttid) {
           oppdateringer.starttid = norsk.starttid;
         }
-        if (
+        const resultatEndret =
           norsk.resultat &&
           (!eks.resultat ||
             eks.resultat.hjemme !== norsk.resultat.hjemme ||
-            eks.resultat.borte !== norsk.resultat.borte)
-        ) {
+            eks.resultat.borte !== norsk.resultat.borte);
+        if (resultatEndret) {
           oppdateringer.resultat = norsk.resultat;
+        }
+        // Skriv ferdig-flagget når det endrer seg (også når scoren er lik).
+        if (norsk.resultat && (eks.ferdig ?? null) !== norsk.ferdig) {
+          oppdateringer.ferdig = norsk.ferdig;
         }
         if (Object.keys(oppdateringer).length > 0) {
           await db.collection("kamper").doc(id).update(oppdateringer);
@@ -195,6 +249,11 @@ async function syncResultater() {
             `  ✓ ${id}: oppdatert (${Object.keys(oppdateringer).join(", ")})`,
           );
           oppdatertResultat += 1;
+          if (
+            (oppdateringer.resultat || oppdateringer.ferdig != null) &&
+            norsk.ferdig
+          )
+            ferdigeKamper += 1;
         }
       }
     }
@@ -202,9 +261,18 @@ async function syncResultater() {
 
   // Etter alle oppdateringer: sjekk om finalen er ferdig og sett vmVinner
   // automatisk i fasit-dokumentet hvis ikke allerede satt.
-  await oppdaterVmVinner(db);
+  const vmVinnerSatt = await oppdaterVmVinner(db);
 
-  return { oppdatert: oppdatertResultat, opprettet: opprettetKnockout };
+  // Aggreger poeng kun når noe endelig har skjedd (kamp ferdigspilt eller
+  // VM-vinner satt) — ikke på hver live-score. Holder Firestore-reads nede.
+  const børAggregere = ferdigeKamper > 0 || vmVinnerSatt;
+
+  return {
+    oppdatert: oppdatertResultat,
+    opprettet: opprettetKnockout,
+    ferdige: ferdigeKamper,
+    børAggregere,
+  };
 }
 
 async function oppdaterVmVinner(db) {
@@ -213,14 +281,14 @@ async function oppdaterVmVinner(db) {
     .where("runde", "==", "Finale")
     .get();
 
-  if (finalerSnap.empty) return;
+  if (finalerSnap.empty) return false;
 
   // Det er normalt bare én Finale-kamp, men ta uansett en med resultat
   const finale = finalerSnap.docs
     .map((d) => d.data())
     .find((k) => k.resultat != null);
 
-  if (!finale) return;
+  if (!finale) return false;
 
   const { hjemme, borte } = finale.resultat;
   let vinner = null;
@@ -233,31 +301,35 @@ async function oppdaterVmVinner(db) {
     console.log(
       "  ! Finale uavgjort etter sluttspill — venter på straffespark-data",
     );
-    return;
+    return false;
   }
 
   const fasitRef = db.collection("fasit").doc("vm");
   const eks = await fasitRef.get();
   const nåværende = eks.exists ? eks.data() : {};
 
-  if (nåværende.vmVinner === vinner) return; // ingen endring
+  if (nåværende.vmVinner === vinner) return false; // ingen endring
 
   await fasitRef.set({ ...nåværende, vmVinner: vinner }, { merge: true });
   console.log(`  ✓ Satt fasit.vmVinner = ${vinner}`);
+  return true;
 }
 
 const r = await syncResultater();
 console.log(
-  `\n✓ Sync ferdig. Oppdaterte ${r.oppdatert} kamper, opprettet ${r.opprettet} knockout-kamper.`,
+  `\n✓ Sync ferdig. Oppdaterte ${r.oppdatert} kamper (${r.ferdige} ferdigspilt), opprettet ${r.opprettet} knockout-kamper.`,
 );
 
-// Ledertavlen leser kun det aggregerte dokumentet (1 read), så vi må
-// re-aggregere når et resultat faktisk har endret seg — da er poengene
-// ferske innen ~10 min (sync-intervallet) i stedet for å vente til
-// neste døgnlige aggregering.
-if (r.oppdatert > 0 || r.opprettet > 0) {
-  console.log("\nResultater endret — kjører poeng-aggregering…");
-  await aggreger();
-} else {
-  console.log("\nIngen resultatendringer — hopper over aggregering.");
+// Signal til GitHub Actions om poeng skal aggregeres (kun ved full tid /
+// VM-vinner). Aggregeringssteget i workflowen kjører bare når endret=true.
+if (process.env.GITHUB_OUTPUT) {
+  appendFileSync(
+    process.env.GITHUB_OUTPUT,
+    `endret=${r.børAggregere ? "true" : "false"}\n`,
+  );
 }
+console.log(
+  r.børAggregere
+    ? "→ Trigger poeng-aggregering."
+    : "→ Ingen ferdige kamper — hopper over aggregering.",
+);

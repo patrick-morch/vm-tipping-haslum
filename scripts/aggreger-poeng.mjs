@@ -118,12 +118,15 @@ async function aggreger() {
     if (!rad) continue;
     const kamp = kampMap.get(t.matchId);
     if (!kamp || !kamp.resultat) continue;
+    // `ferdig === false` = live-stilling: vent til full tid før poeng gis.
+    // Eldre/manuelt satte kamper uten feltet regnes som endelige.
+    if (kamp.ferdig === false) continue;
     if (!erTippbar(kamp)) continue;
     const bonus = kamp.bonusFaktor || 1;
     const p = beregnPoeng(t, kamp.resultat, bonus);
     rad.kampPoeng += p;
-    if (p === 3 * bonus) rad.eksakte += 1;
-    else if (p === 1 * bonus) rad.utfall += 1;
+    if (p >= 3 * bonus) rad.eksakte += 1;
+    else if (p >= 1 * bonus) rad.utfall += 1;
     else rad.feil += 1;
   }
 
@@ -156,7 +159,9 @@ async function aggreger() {
     .doc("ledertavle")
     .set({
       oppdatert: Date.now(),
-      kamperSpilt: Array.from(kampMap.values()).filter((k) => k.resultat).length,
+      kamperSpilt: Array.from(kampMap.values()).filter(
+        (k) => k.resultat && k.ferdig !== false,
+      ).length,
       kamperTotalt: kampMap.size,
       rader: liste,
     });
@@ -169,10 +174,4 @@ async function aggreger() {
   );
 }
 
-export { aggreger };
-
-// Kjør bare automatisk når scriptet startes direkte (ikke ved import fra
-// sync-resultater, som kaller aggreger() selv når et resultat har endret seg).
-if (import.meta.url === `file://${process.argv[1]}`) {
-  await aggreger();
-}
+await aggreger();
