@@ -20,6 +20,7 @@ import {
 } from "@/lib/vm-data";
 import { beregnTabell, kamperMedMineTips } from "@/lib/standings";
 import { beregnPoeng } from "@/lib/types";
+import AlleTipsForKamp from "@/components/AlleTipsForKamp";
 import { Match, Prediction } from "@/lib/types";
 import Skall from "@/components/Skall";
 import Beskytt from "@/components/Beskytt";
@@ -368,6 +369,7 @@ function KampRad({
           )}
         </div>
       )}
+      {låst && <AlleTipsForKamp kamp={kamp} />}
     </div>
   );
 }

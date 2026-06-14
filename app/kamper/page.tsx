@@ -9,6 +9,7 @@ import { erNorgeKamp, erTippbar, flagg, kortLagNavn } from "@/lib/vm-data";
 import Skall from "@/components/Skall";
 import Beskytt from "@/components/Beskytt";
 import SideHeader from "@/components/SideHeader";
+import AlleTipsForKamp from "@/components/AlleTipsForKamp";
 
 const ANTALL = 5;
 
@@ -405,6 +406,7 @@ function ResultatKort({ kamp, tip }: { kamp: Match; tip?: Prediction }) {
           </span>
         </div>
       )}
+      <AlleTipsForKamp kamp={kamp} />
     </div>
   );
 }
