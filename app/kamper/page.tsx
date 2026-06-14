@@ -76,8 +76,7 @@ function Kamper() {
   const nedTekst = førsteKamp ? formatTid(førsteKamp.starttid - nå) : null;
 
   return (
-    <div className="grid grid-cols-1 xl:grid-cols-[1fr_240px] xl:gap-6">
-      <div className="min-w-0 space-y-5">
+    <div className="space-y-5">
       <SideHeader
         tittel="Neste kamper"
         undertittel={
@@ -143,43 +142,6 @@ function Kamper() {
           </div>
         </div>
       )}
-      </div>
-
-      {/* PC-only deko: Messi + Ronaldo til høyre, proporsjonal med kamp-listen */}
-      <aside className="hidden xl:flex xl:flex-col xl:gap-3 xl:sticky xl:top-24 xl:self-start">
-        <PlayerCard
-          src="/messi.jpg"
-          navn="Messi"
-          lag="Argentina"
-        />
-        <PlayerCard
-          src="/ronaldo.jpg"
-          navn="Ronaldo"
-          lag="Portugal"
-        />
-      </aside>
-    </div>
-  );
-}
-
-function PlayerCard({
-  src,
-  navn,
-  lag,
-}: {
-  src: string;
-  navn: string;
-  lag: string;
-}) {
-  return (
-    <div className="relative rounded-2xl overflow-hidden border border-border shadow-card bg-surface">
-      <img src={src} alt={navn} className="w-full aspect-[3/4] object-cover" />
-      <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-bg/95 via-bg/50 to-transparent p-3">
-        <div className="text-xs uppercase tracking-[0.15em] font-bold text-text">
-          {navn}
-        </div>
-        <div className="text-[10px] text-text/70 mt-0.5">{lag}</div>
-      </div>
     </div>
   );
 }
